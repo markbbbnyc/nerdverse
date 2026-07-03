@@ -77,7 +77,7 @@ The foundation scripts are now real and tested:<br>
 - `bootstrap.sh` creates `nerdverse.env`, ensures DB access, and delegates to the migration runner.<br>
 - `scripts/apply_migrations.sh` is fully idempotent. It applies `sql/migrations/*.sql` in order and records them in `schema_migrations`. Seeds are re-runnable.<br>
 - `scripts/db.sh` centralizes connection logic and helpers.<br>
-- `play.sh` (Phase 0) loads live state from the database, prints a nice status block, shows crude ASCII, and lets you pick basic actions. It already updates the DB for some choices.<br>
+- `play.sh` (Phase 0, heavily evolved) is now a full immersive terminal experience: clears for "full screen" feel, centered/adaptive content, AS/400-style push/pop screen navigation (F3=Back etc.), green phosphor/amber aesthetic with sparse decorations and nerdfont icons (graceful on plain terminals). Features dedicated [7] World Map, [8] Local Map (per current location), [9] Character Sheets (live DB data for Meyiu + Sera with traits/gear/abilities in clean old-terminal + LaTeX-inspired layout). All output safe for ssh/tmux/Linux/macOS. Updates DB live. Maps loaded from source files into DB.<br>
 - Full initial world (Meyiu + Sera stats, inventory with correct equipped flags, passives, Brindleford locations, world_state flags) was seeded exactly from the restart packet.<br>
 <br>
 <em>Ran successfully on the original machine. The state in nerdverse2 matches the PDF save point.</em><br>
@@ -102,14 +102,62 @@ This session demonstrated early companion interaction and healing mechanics. Goo
 <br>
 State saved. Ready for next input.<br>
 <br>
+<h3>2026-07-02 — Session Wrap: Measured Defense at the Inn</h3><br>
+<br>
+<strong>Player Decision</strong><br>
+Meyiu chose to stay and help defend the villagers "as much as we can without being foolish." He ordered exactly two scouts to warn and retrieve stragglers outside town, with strict no-engagement orders — "we need every able-bodied man in the defense." This embodied the core theme of measured responsibility ("Not every burden is mine") while still committing to the immediate threat.<br>
+<br>
+<strong>Sera's Response (Final Move)</strong><br>
+Sera stood, checked her buckler, and gave a hard, approving nod. "Smart. Not heroic. Two scouts. No fights. We bring people in, then we make this place cost them more than they want to pay. I'll back your play, pilgrim. But we do it smart, or we don't do it at all." She glanced at the failing light. "Sheriff first, then we pick our runners. The gang won't wait for us to finish talking."<br>
+<br>
+<strong>What Was Built / Logged</strong><br>
+- Decision and scouts order persisted in DB (`scouts_status`, `defense_focus`, `brindleford_preparedness = Medium`).<br>
+- Strong narrative tie-in to Meyiu's character arc (boundaries, detours, journey preservation).<br>
+- Clean pause point at the inn with active defense planning beginning.<br>
+<br>
+Session paused. Excellent foundation for resume.<br>
+<br>
+<h3>2026-07-03 — Terminal Canvas & Navigation Overhaul (UI Phase)</h3><br>
+<br>
+<strong>Motivation</strong><br>
+The original play.sh was functional but felt like a basic menu. We wanted a more immersive "full screen" old-terminal experience that still feels modern and enjoyable — bridging 80s green-screen RPGs / AS/400 operator consoles with fantasy text adventure, while working reliably over ssh, in tmux, on Linux (Ubuntu/Arch) and macOS.<br>
+<br>
+<strong>What We Built / Changed</strong><br>
+<br>
+- Major refactor of `play.sh`:<br>
+  - Screen clearing on transitions for true "full screen" canvas feel.<br>
+  - Centered content + adaptive wide headers using `tput cols` + `stty` fallbacks (robust when tput is missing or TERM is weird).<br>
+  - AS/400-style push/pop navigation stack (`SCREEN_STACK`, `push_screen`/`pop_screen`, F3=Back semantics). Info views (maps, sheets) are pushed screens; any reasonable key pops back.<br>
+  - Green phosphor / amber aesthetic (tput setaf when available for best TERM compatibility, safe ESC byte fallback). Sparse decorations, nerdfont icons (🗺 📜 👤 ⏏ — degrades gracefully).<br>
+  - ANSI-aware visible length stripping (`visible_len()`) so color codes and multibyte icons don't break centering or box right borders.<br>
+  - All styled output now via `printf` (no more escape leakage or interpretation surprises).<br>
+  - Menu options expanded: [7] World Map, [8] Local Map (current location), [9] Character Sheets. Old actions (inventory, buckler lore, etc.) also feel like quick sub-views.<br>
+  - Character sheets: clean fields, equipped gear (live query), techniques/abilities, curated carried items, traits, role notes — mixed AS/400 field labels + Ultima-style bullets + LaTeX whitespace-heavy sections.<br>
+  - Maps system: whimsical ASCII sources in `maps/` (world + per-location), loaded into new `maps` table by `scripts/apply_migrations.sh` (new `sql/migrations/002_maps.sql`). World map shows explored Brindleford region; locals are location-specific (forge, medicine room, inn, etc.).<br>
+- `scripts/apply_migrations.sh` extended to load maps from files into DB on every run (idempotent upserts).<br>
+- Fixed cross-environment bugs: unbound variables under `set -u`, literal `\033` in output, centering miscalc, clear in non-tty, tput/stty portability.<br>
+- play.sh now feels like a real retro terminal app you can live in while playing the RPG.<br>
+<br>
+<strong>Compatibility</strong><br>
+Tested/ensured for: local macOS terminal, ssh (with and without -t), tmux, Linux (Ubuntu/Arch base installs). Falls back gracefully when no tput, no color, small terminal, or piped output.<br>
+<br>
+<strong>Philosophy</strong><br>
+Old (green screen, function-key navigation, push/pop screens) meets new (unicode boxes, dynamic colors via tput, visible-length math). Still 100% pure bash + MariaDB. The "canvas" itself is now part of the experience.<br>
+<br>
+<em>Ran beautifully. The game now has a real terminal personality that matches the "unfinished but choosing" theme.</em><br>
+<br>
+<hr><br>
+<br>
+<h2>Current Game State (Living Snapshot)</h2><br>
+<br>
 <hr><br>
 <br>
 <h2>Current Game State (Living Snapshot)</h2><br>
 <br>
 <strong>Location:</strong> Sera's Medicine Room  <br>
-<strong>Immediate Context:</strong> Meyiu and Sera have entered the medicine room to inventory the recovered medicine crate. Meyiu's ribs have been tended.<br>
+<strong>Immediate Context:</strong> After supper at the Hearthmouse Inn, Meyiu voiced a clear, measured decision: stay and help defend the villagers without foolishness. Exactly two scouts to be sent to warn and retrieve stragglers (strict no-engagement orders — every able body needed for defense). The group is preparing to coordinate with Sheriff Marn and begin practical village defense.<br>
 <br>
-<strong>Time Pressure:</strong> The Black Bridge Gang expected the thieves back. Retaliation possible by dusk or midnight.<br>
+<strong>Time Pressure:</strong> The Black Bridge Gang expected the thieves back. Retaliation possible by dusk or midnight. Light is failing.<br>
 <br>
 <h3>Meyiu — The Sinner Who Still Chooses</h3><br>
 <br>
@@ -121,6 +169,7 @@ State saved. Ready for next input.<br>
 | Class          | Mage |<br>
 | Level / Milestone | 2 |<br>
 | Current HP     | 13 / 13 (full) |<br>
+| Location       | Hearthmouse Inn |<br>
 | Coins          | 4 silver |<br>
 | Road XP        | 5 / 10 |<br>
 | Location       | Sera's Medicine Room |<br>
@@ -187,12 +236,23 @@ Problems:<br>
 <br>
 <h2>Runbook: Bootstrap & Migration</h2><br>
 <br>
+<h3>Identity & Access Management (Dedicated Game User)</h3><br>
+<br>
+Nerdverse uses a <strong>dedicated database user</strong> called `nerdverse` (configurable) for all gameplay and script operations.<br>
+<br>
+- The shell scripts you run as your normal local user (`mark`, `mary`, etc.) connect to MariaDB <strong>as the `nerdverse` app user</strong>.<br>
+- This app user is granted the necessary privileges on the `nerdverse2` database.<br>
+- During initial bootstrap you may use a privileged account (your personal MariaDB user or `root`) to create the database and the `nerdverse` user + grants.<br>
+- This design makes the game portable and secure across different local accounts and machines.<br>
+<br>
+After the first `./bootstrap.sh` the `nerdverse` user owns the effective access. You can tighten or adjust grants later.<br>
+<br>
 <h3>Requirements (Linux or macOS)</h3><br>
 <br>
 - MariaDB client (`mariadb` or `mysql` command)<br>
 - Bash (4+ recommended)<br>
 - Git (for cloning the repo)<br>
-- A MariaDB user that can create the `nerdverse2` database and tables<br>
+- A privileged MariaDB account (for first-time setup) that can `CREATE USER` and `GRANT`<br>
 <br>
 <h3>Idempotent Bootstrap</h3><br>
 <br>
@@ -211,19 +271,29 @@ And later:<br>
 ./bootstrap.sh   # safe to re-run<br>
 ```<br>
 <br>
+<strong>Before first run on a new Linux box</strong>, see `docs/linux-packages.md` (or run `./install-deps.sh`) for packages.<br>
+<br>
+The bootstrap now automatically creates the dedicated `nerdverse` database user and grants it the necessary privileges on `nerdverse2`.<br>
+<br>
 <h3>First-Time Setup on a New Machine</h3><br>
 <br>
-1. Install MariaDB server + client.<br>
-2. Create the database user (example):<br>
-<br>
-   ```sql<br>
-   CREATE USER 'mark'@'localhost' IDENTIFIED BY 'yourpassword';<br>
-   GRANT ALL ON nerdverse2.* TO 'mark'@'localhost';<br>
-   FLUSH PRIVILEGES;<br>
+1. Install the required packages (see `docs/linux-packages.md` and `install-deps.sh --install`).<br>
+2. Clone the repo and copy the example config:<br>
+   ```bash<br>
+   cp nerdverse.env.example nerdverse.env<br>
    ```<br>
-<br>
-3. (Optional but recommended) Create a `nerdverse.env` file (see template).<br>
+3. Edit `nerdverse.env`:<br>
+   - `DB_USER=nerdverse` (the dedicated game user)<br>
+   - Optionally set `DB_SETUP_USER` + `DB_SETUP_PASS` to a privileged account you control (e.g. your normal DB user or root). This is only used during bootstrap.<br>
 4. Run `./bootstrap.sh`<br>
+<br>
+The bootstrap will:<br>
+- Create the `nerdverse2` database (if needed)<br>
+- Create the dedicated `nerdverse` MariaDB user<br>
+- Grant it the required privileges<br>
+- Run migrations and seed the initial world state<br>
+<br>
+After the first successful bootstrap you can usually remove the `DB_SETUP_*` lines from `nerdverse.env`. The game will then always run as the limited `nerdverse` app user.<br>
 <br>
 <h3>Configuration</h3><br>
 <br>
@@ -245,12 +315,19 @@ The scripts will source this if present.<br>
 <br>
 <h2>Technical Architecture (Current)</h2><br>
 <br>
-- All state lives in MariaDB `nerdverse2`.<br>
-- Bash scripts only for the engine and UI.<br>
+- All state lives in MariaDB `nerdverse2` (the save file).<br>
+- <strong>play.sh</strong> is the full terminal experience:<br>
+  - "Full screen" canvas: clears on navigation, centered content, adaptive-width headers (tput + stty fallbacks).<br>
+  - AS/400-style push/pop screen navigation stack (F3/Enter to pop back). Info screens are first-class pushed views.<br>
+  - Green-screen / amber aesthetic (prefers `tput` for TERM compatibility; safe ESC fallback). Sparse nerdfont icons + box drawing.<br>
+  - Features: [7] World Map (explored Brindleford Vale), [8] Local Map (current setting), [9] Character Sheets (Meyiu + Sera — live stats, equipped gear, abilities, traits, role).<br>
+  - ANSI-aware layout (visible length stripping so codes/icons don't break alignment).<br>
+  - All output via safe `printf`; robust in ssh/tmux/Linux/macOS/non-tty.<br>
+- Maps system: whimsical ASCII in `maps/*.txt` (source of truth + human docs). Loaded into `maps` table on every `./scripts/apply_migrations.sh` (via 002 migration + loader).<br>
 - Migrations are plain `.sql` files applied in lexical order.<br>
 - A `schema_migrations` table prevents re-application.<br>
 - Session log is append-only for narrative + debugging.<br>
-- Future: simple command dispatch in bash using `case` + functions.<br>
+- Bash + MariaDB client only. No other runtimes. Maximum portability and learnability.<br>
 <br>
 <hr><br>
 <br>
