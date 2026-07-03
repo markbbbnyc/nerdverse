@@ -67,6 +67,7 @@ if [[ -t 1 ]] && command -v tput >/dev/null 2>&1; then
     CYAN=$(tput setaf 6 2>/dev/null || printf '\033[36m')
     GRAY=$(printf '\033[38;5;250m')  # nice eyecandy mid-grey (much better contrast on macOS Terminal dark bg)
     WHITE=$(tput setaf 7 2>/dev/null || printf '\033[37m')
+    RED=$(tput setaf 1 2>/dev/null || printf '\033[31m')
 else
     # Fallback using actual escape (for very old/minimal systems)
     _e=$(printf '\033')
@@ -80,6 +81,7 @@ else
     CYAN="${_e}[36m"
     GRAY="${_e}[38;5;250m"  # nice eyecandy mid-grey (much better contrast on macOS Terminal dark bg)
     WHITE="${_e}[37m"
+    RED="${_e}[31m"
 fi
 
 # Nerdfont icons (enhances on terminals with nerdfonts; graceful degradation)
@@ -193,7 +195,7 @@ render_main() {
     echo
     printf '%sWhat does Meyiu do?%s\n' "$BOLD$GREEN" "$RESET"
     if [[ "${LOCATION}" == *"Medicine"* ]]; then
-        printf '  %s[1]%s Inventory the recovered crate together\n' "$GREEN" "$RESET"
+        printf '  %s[1]%s Visit Sera to get healed & check the crate\n' "$GREEN" "$RESET"
     else
         printf '  %s[1]%s Go to Sera'\''s medicine room (recommended)\n' "$GREEN" "$RESET"
     fi
@@ -240,8 +242,9 @@ render_inventory() {
     draw_screen_header "${ICON_CHAR}INVENTORY"
     echo
     printf '%sMeyiu'\''s Inventory:%s\n' "$BOLD$GREEN" "$RESET"
-    echo "SELECT CONCAT('  - ', item_name, ' (x', quantity, ')') FROM inventory WHERE character_id = (SELECT id FROM characters WHERE is_player=TRUE) ORDER BY equipped DESC, item_name;" | $MARIADB
+    echo "SELECT CONCAT('  ', COALESCE(CONCAT('[', slot, '] '), ''), item_name, ' (x', quantity, ')') FROM inventory WHERE character_id = (SELECT id FROM characters WHERE is_player=TRUE) ORDER BY equipped DESC, slot, item_name;" | $MARIADB
     echo
+    echo "  (Equipment slots and modifiers are now active in combat. More equip UI coming in next milestone.)"
     draw_footer
 }
 
@@ -265,6 +268,50 @@ load_world() {
     CHAPTER=$(db_query "SELECT value FROM world_state WHERE state_key='current_chapter';")
 }
 
+heal_player() {
+    local cur_hp=$(db_query "SELECT current_hp FROM characters WHERE name='Meyiu';")
+    local max_hp=$(db_query "SELECT max_hp FROM characters WHERE name='Meyiu';")
+    if [[ $cur_hp -lt $max_hp ]]; then
+        local heal_amount=$(( max_hp - cur_hp ))
+        [[ $heal_amount -lt 1 ]] && heal_amount=1
+        local new_hp=$max_hp
+        db_exec "UPDATE characters SET current_hp=$new_hp WHERE name='Meyiu';"
+        echo -e "${GREEN}Sera tends to your wounds with skill and care, fully restoring you to ${new_hp} HP.${RESET}"
+        log_narrative "Sera healed Meyiu for ${heal_amount} HP in the medicine room."
+    else
+        echo -e "${GREEN}Sera checks you over — you're already in good shape.${RESET}"
+    fi
+}
+
+# === Phase 1 Equipment & Modifiers ===
+# Slots: main_hand, off_hand, armor, focus, accessory
+# Modifiers are simple for now (e.g. spell_power_bonus)
+
+function get_equipment_modifiers() {
+    # Returns simple bonuses for current equipped gear (Meyiu for now)
+    local spell_bonus=0
+    local phys_bonus=0
+
+    # Query equipped items and apply simple tag/effect based bonuses
+    while IFS=$'\t' read -r item_key effect tags; do
+        if [[ "$tags" == *"focus"* || "$item_key" == *"staff"* || "$item_key" == *"crystal"* ]]; then
+            spell_bonus=$(( spell_bonus + 1 ))
+        fi
+        if [[ "$tags" == *"weapon"* ]]; then
+            phys_bonus=$(( phys_bonus + 1 ))
+        fi
+    done < <(echo "SELECT item_key, effect, tags FROM inventory i JOIN characters c ON i.character_id = c.id WHERE c.name='Meyiu' AND equipped=TRUE;" | $MARIADB --silent --skip-column-names)
+
+    echo "spell_bonus=$spell_bonus phys_bonus=$phys_bonus"
+}
+
+function get_player_abilities() {
+    # Return list of abilities with proficiency for the player
+    echo "SELECT ability_key, ability_name, description, uses_remaining, proficiency 
+          FROM character_abilities a JOIN characters c ON a.character_id = c.id 
+          WHERE c.name='Meyiu' ORDER BY proficiency DESC, ability_name;" | $MARIADB --silent --skip-column-names
+}
+
 show_status() {
     load_player
     load_sera
@@ -283,14 +330,29 @@ show_status() {
     # Visible "Sera is choosing" reward - core dopamine
     local joint=${SERA_JOINT:-0}
     local lead=${SERA_LEAD:-0}
+    local t=${SERA_TRUST:-35}
+    local b=${SERA_BOND:-25}
     printf '  %sSera'\''s Bond with you:%s  Trust %s  |  Bond %s  |  Shared: %s | Sera led: %s\n' \
-        "$GREEN" "$RESET" "${SERA_TRUST:-35}" "${SERA_BOND:-25}" "$joint" "$lead"
+        "$GREEN" "$RESET" "$t" "$b" "$joint" "$lead"
     echo
 
+    # Qualitative label for progression feel
+    local bond_label=""
+    if [[ $b -ge 80 ]]; then
+        bond_label=" (Very close — Sera trusts you deeply)"
+    elif [[ $b -ge 60 ]]; then
+        bond_label=" (Strong bond)"
+    elif [[ $b -ge 40 ]]; then
+        bond_label=" (Growing trust)"
+    else
+        bond_label=" (Fragile)"
+    fi
+    printf '  %sSera'\''s stance:%s %s%s\n' "$GREEN" "$RESET" "$b" "$bond_label"
+
     # Explicit "Sera is choosing this" feeling
-    if [[ "${SERA_BOND:-25}" -ge 40 ]]; then
+    if [[ $b -ge 40 ]]; then
         printf '  %sSera has chosen to walk this road with you.%s\n' "$AMBER" "$RESET"
-    elif [[ "${SERA_BOND:-25}" -ge 25 ]]; then
+    elif [[ $b -ge 25 ]]; then
         printf '  %sSera is still choosing whether to fully tie her fate to yours.%s\n' "$DIM" "$RESET"
     fi
     echo
@@ -374,6 +436,20 @@ sera_update_state() {
     db_exec "UPDATE world_state SET value='${value}' WHERE state_key='${key}';"
 }
 
+# Passive decay: the bond and trust slowly wane over "time" (every action)
+# unless actively maintained by good choices. This creates ambition and risk.
+# High values feel earned; low values create real tension.
+apply_sera_decay() {
+    load_sera_state
+    local decay=1
+    local t=$(( ${SERA_TRUST:-35} - decay ))
+    local b=$(( ${SERA_BOND:-25} - decay ))
+    [[ $t -lt 0 ]] && t=0
+    [[ $b -lt 0 ]] && b=0
+    sera_update_state "sera_trust_level" "$t"
+    sera_update_state "sera_bond_level" "$b"
+}
+
 # Call this after meaningful shared actions or experiences.
 # This is one of the primary ways the bond grows.
 # Repetition is devalued unless context changed.
@@ -399,6 +475,7 @@ sera_record_joint_experience() {
     db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_bond_level\", \"$b\") ON DUPLICATE KEY UPDATE value = \"$b\";"
 
     sera_update_state "sera_last_action" "joint"
+    sera_update_state "sera_recent_event" "meaningful_action"
 }
 
 # Sera exercises agency. She is choosing.
@@ -525,7 +602,11 @@ sera_exercise_agency() {
 
     # Make the "Sera chose this" feeling explicit after meaningful agency
     if [[ $bond_change -gt 1 || $trust_change -gt 1 ]]; then
-        echo -e "${AMBER}Sera looks at you for a long moment, then nods once. \"Alright. We do this together.\"${RESET}"
+        if [[ $new_bond -ge 70 ]]; then
+            echo -e "${AMBER}Sera looks at you warmly. \"We do this together. I trust you.\"${RESET}"
+        else
+            echo -e "${AMBER}Sera looks at you for a long moment, then nods once. \"Alright. We do this together.\"${RESET}"
+        fi
         log_narrative "Sera explicitly chooses the journey with you."
     fi
 
@@ -541,6 +622,182 @@ sera_exercise_agency() {
     if [[ $new_trust -lt 20 ]]; then
         echo -e "${DIM}(The choice to stay is more visible right now. And more fragile.)${RESET}"
     fi
+}
+
+# === Basic Combat Physics (JRPG / Tactical style) ===
+# Turn-based, ability driven. Dice via $RANDOM.
+# Mage flexing edition with old-school ASCII flair.
+# This is the "physics" layer - the canvas for action and risk.
+
+function draw_combat_header() {
+    local enemy_name="$1"
+    clear_screen
+    echo -e "${YELLOW}╔════════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${YELLOW}║                    ⚔  BATTLE  ⚔                              ║${RESET}"
+    echo -e "${YELLOW}╚════════════════════════════════════════════════════════════════╝${RESET}"
+    echo
+}
+
+function draw_ascii_combatants() {
+    local player_hp=$1
+    local player_max=$2
+    local enemy_hp=$3
+    local enemy_max=$4
+    local enemy_name="$5"
+
+    # Larger game-card / tile style with generous borders and internal padding.
+    # Text and art have breathing room inside the borders (not boxed in).
+    # Minimalistic stats (HP bar + numbers) shown WITHIN each card.
+    # Clear visual guidance with labels and separation.
+
+    # Build wider bars for larger cards
+    local pbar=$(printf '%*s' $(( player_hp * 8 / player_max )) '' | tr ' ' '█')
+    local pfill=$(printf '%*s' $(( 8 - (player_hp * 8 / player_max) )) '' | tr ' ' '░')
+    local ebar=$(printf '%*s' $(( enemy_hp * 8 / enemy_max )) '' | tr ' ' '█')
+    local efill=$(printf '%*s' $(( 8 - (enemy_hp * 8 / enemy_max) )) '' | tr ' ' '░')
+
+    echo
+    # Labels
+    printf "  ${GREEN}PLAYER${RESET}                                    ${RED}ENEMY${RESET}\n"
+    # Wider bordered cards with padding inside
+    echo -e "  ${GREEN}╔════════════════════╗${RESET}          ${RED}╔════════════════════╗${RESET}"
+    printf "  ${GREEN}║      MEYIU         ║${RESET}          ${RED}║ %-18s ║${RESET}\n" "${enemy_name:0:18}"
+    echo -e "  ${GREEN}║                    ║${RESET}          ${RED}║                    ║${RESET}"
+    echo -e "  ${GREEN}║         /\\         ║${RESET}          ${RED}║         o          ║${RESET}"
+    echo -e "  ${GREEN}║        /  \\        ║${RESET}          ${RED}║        /|\\         ║${RESET}"
+    echo -e "  ${GREEN}║       /Mage\\       ║${RESET}          ${RED}║       / | \\        ║${RESET}"
+    echo -e "  ${GREEN}║        ||||        ║${RESET}          ${RED}║        /   \\       ║${RESET}"
+    echo -e "  ${GREEN}║                    ║${RESET}          ${RED}║                    ║${RESET}"
+    # Stats inside the border with padding
+    printf "  ${GREEN}║   HP: %s%s %2d/%-2d   ║${RESET}          ${RED}║   HP: %s%s %2d/%-2d   ║${RESET}\n" \
+        "$pbar" "$pfill" "$player_hp" "$player_max" "$ebar" "$efill" "$enemy_hp" "$enemy_max"
+    echo -e "  ${GREEN}╚════════════════════╝${RESET}          ${RED}╚════════════════════╝${RESET}"
+    echo
+}
+
+function start_encounter() {
+    local enemy_name="$1"
+    local enemy_max_hp="${2:-18}"
+    local enemy_hp=$enemy_max_hp
+
+    local player_name="Meyiu"
+    local player_hp=$(db_query "SELECT current_hp FROM characters WHERE name='$player_name';")
+    local player_max=$(db_query "SELECT max_hp FROM characters WHERE name='$player_name';")
+
+    draw_combat_header "$enemy_name"
+
+    while [[ $player_hp -gt 0 && $enemy_hp -gt 0 ]]; do
+        draw_ascii_combatants "$player_hp" "$player_max" "$enemy_hp" "$enemy_max_hp" "$enemy_name"
+
+        # Load equipment modifiers and abilities
+        eval $(get_equipment_modifiers)
+        local spell_mod=${spell_bonus:-0}
+        local phys_mod=${phys_bonus:-0}
+
+        echo "Choose your flex:"
+        local i=1
+        declare -a ability_list=()
+        while IFS=$'\t' read -r akey aname adesc uses prof; do
+            ability_list[$i]="$akey"
+            local display_name="$aname"
+            [[ $prof -gt 0 ]] && display_name="$aname (Prof $prof)"
+            printf "  %s) %s\n" "$i" "$display_name"
+            ((i++))
+        done < <(get_player_abilities)
+
+        # Fallback if no abilities
+        if [[ ${#ability_list[@]} -eq 0 ]]; then
+            echo "  1) Basic Attack"
+            ability_list[1]="basic_attack"
+        fi
+
+        read -r -p "> " action
+
+        local defended=0
+        local ability_key="${ability_list[$action]:-basic_attack}"
+        local base=4
+        local is_spell=0
+
+        case "$ability_key" in
+            *firebolt*|*Firebolt*)
+                base=6
+                is_spell=1
+                echo -e "${YELLOW}You channel and release a roaring Zen-Mage Firebolt!${RESET}"
+                ;;
+            *guard*|*buckler*)
+                echo "You raise the Ash-Wood Buckler, bracing."
+                defended=2
+                ;;
+            *breath*|*guard*)
+                echo "You activate Breathguard - the buckler flares with protective energy!"
+                defended=3
+                ;;
+            *)
+                echo "You strike!"
+                ;;
+        esac
+
+        if [[ $defended -eq 0 ]]; then
+            local roll=$(( RANDOM % 5 + 1 ))
+            local dmg=$(( base + roll + (is_spell ? spell_mod : phys_mod) ))
+            # Simple proficiency bonus
+            local prof_bonus=0
+            # crude: higher prof = more dmg (will be replaced by real tracking)
+            dmg=$(( dmg + (RANDOM % 3) ))   # placeholder for now
+            echo "  The attack strikes for ${dmg} damage!"
+            enemy_hp=$(( enemy_hp - dmg ))
+
+            if [[ $enemy_hp -le 0 ]]; then
+                local overkill=$(( -enemy_hp ))
+                local heal=$(( overkill + 1 ))
+                player_hp=$(( player_hp + heal ))
+                [[ $player_hp -gt $player_max ]] && player_hp=$player_max
+                db_exec "UPDATE characters SET current_hp=$player_hp WHERE name='$player_name';"
+                echo -e "  ${GREEN}Overkill! You siphon ${heal} life force back to yourself.${RESET}"
+            fi
+
+            # Increment a crude proficiency counter (Phase 1 placeholder)
+            if [[ $is_spell -eq 1 ]]; then
+                db_exec "UPDATE character_abilities SET proficiency = COALESCE(proficiency,0) + 1 WHERE character_id = (SELECT id FROM characters WHERE name='Meyiu') AND ability_key LIKE '%firebolt%';"
+            fi
+        fi
+
+        # Enemy turn
+        if [[ $enemy_hp -gt 0 ]]; then
+            echo
+            echo "${enemy_name} lunges!"
+            local edmg=$(( 3 + RANDOM % 4 ))
+            if [[ $defended -gt 0 ]]; then
+                edmg=$(( edmg - defended ))
+                [[ $edmg -lt 1 ]] && edmg=1
+                echo "  Your defense reduces it to ${edmg} damage!"
+            fi
+            player_hp=$(( player_hp - edmg ))
+            [[ $player_hp -lt 0 ]] && player_hp=0
+            db_exec "UPDATE characters SET current_hp=$player_hp WHERE name='$player_name';"
+            echo "  You take ${edmg} damage. (HP: ${player_hp})"
+        fi
+
+        # Check end
+        if [[ $enemy_hp -le 0 ]]; then
+            echo
+            echo -e "${GREEN}=== VICTORY ===${RESET}"
+            echo "${enemy_name} crumples."
+            log_narrative "Meyiu defeated a ${enemy_name} with mage fire and buckler discipline."
+            db_exec "UPDATE characters SET road_xp = road_xp + 3 WHERE name='$player_name';"
+            break
+        fi
+        if [[ $player_hp -le 0 ]]; then
+            echo
+            echo -e "${RED}=== DEFEAT ===${RESET}"
+            log_narrative "Meyiu was overwhelmed in combat."
+            break
+        fi
+
+        read -r -p "Press enter for next round..." dummy
+    done
+
+    read -r -p "Press enter to return to the road..."
 }
 
 # === Map viewing (new in this pass) ===
@@ -611,9 +868,9 @@ show_character_sheets() {
           WHERE c.name=\"Meyiu\" AND equipped=TRUE ORDER BY item_name;" | $MARIADB --silent --skip-column-names
     echo
     echo "  KNOWN TECHNIQUES"
-    echo "SELECT CONCAT(\"    • \", ability_name, \"   \", LEFT(description,42))
+    echo "SELECT CONCAT(\"    • \", ability_name, \" (Prof \", COALESCE(proficiency,0), \")  \", LEFT(description,30))
           FROM character_abilities a JOIN characters c ON a.character_id=c.id
-          WHERE c.name=\"Meyiu\" ORDER BY ability_name;" | $MARIADB --silent --skip-column-names
+          WHERE c.name=\"Meyiu\" ORDER BY proficiency DESC, ability_name;" | $MARIADB --silent --skip-column-names
     echo
     echo "  CARRIED (selected)"
     echo "    • Healing Potion, Leechheart Pearl, Repair Bundle, Road Knife"
@@ -673,6 +930,14 @@ db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_leadership_mo
 db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_last_action\", \"\") ON DUPLICATE KEY UPDATE value=COALESCE(value, \"\");"
 db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_recent_event\", \"\") ON DUPLICATE KEY UPDATE value=COALESCE(value, \"\");"
 
+# Phase 1: Equipment slots + proficiency
+db_exec "ALTER TABLE inventory ADD COLUMN IF NOT EXISTS slot VARCHAR(50) DEFAULT NULL;"
+db_exec "ALTER TABLE character_abilities ADD COLUMN IF NOT EXISTS proficiency INT DEFAULT 0;"
+
+# Demo equip for Phase 1 (will be replaced by proper UI later)
+db_exec "UPDATE inventory SET equipped=TRUE, slot='focus' WHERE character_id = (SELECT id FROM characters WHERE name='Meyiu') AND item_key LIKE '%staff%' OR item_key LIKE '%crystal%' LIMIT 1;"
+db_exec "UPDATE inventory SET equipped=TRUE, slot='off_hand' WHERE character_id = (SELECT id FROM characters WHERE name='Meyiu') AND item_key LIKE '%buckler%' LIMIT 1;"
+
 # Initial push of main screen
 SCREEN_STACK=("main")
 
@@ -691,6 +956,10 @@ while true; do
                     log_narrative "Meyiu chose to follow Sera to the medicine room."
                     sera_record_joint_experience
                     sera_exercise_agency "follow medicine room action"
+
+                    # Heal the player when visiting Sera in the medicine room
+                    heal_player
+
                     read -r -p "Press enter to continue in the medicine room..."
                     ;;
                 2|inventory)
@@ -714,8 +983,10 @@ while true; do
                     echo
                     sera_says "Sheriff Marn can wait five minutes. The medicine won't."
                     sera_record_joint_experience
-                    # Demo Sera agency with lead for testing
                     sera_exercise_agency "defend the village with measured plan"
+                    echo
+                    echo "As you discuss with the Sheriff, a lone Black Bridge scout spots you and charges!"
+                    start_encounter "Black Bridge Scout" 15
                     read -r -p "Press enter..."
                     ;;
                 6|buckler)
@@ -752,6 +1023,7 @@ while true; do
                     read -r -p "Press enter..."
                     ;;
             esac
+            apply_sera_decay
             ;;
         world_map|local_map|character_sheets|inventory)
             # Any reasonable input pops back (AS/400 "view then F3/exit")

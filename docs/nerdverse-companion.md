@@ -39,40 +39,105 @@ The game is designed to feel like a favorite never-ending series: ongoing charac
 ## Continue Prompt for Grok (Memento Notes)
 
 **Current Agreed Direction (as of latest session):**
-- Sera is a **full autonomous player** with real agency. She voluntarily chooses to journey with Meyiu (work, play, adventure, share, endure, fight together). The bond is tender, sacred, and earned.
-- Core player dopamine: the *felt sense* that Sera is actively choosing. Make this visible and rewarding.
-- Togetherness = bantering + actions that "walk the talk". Shared experiences > words alone.
-- Leadership: ~70% Meyiu leading, 30% Sera leading. Both have wins/losses as lessons that strengthen them.
-- Wounds exist as flavor ([4] overall) and create interesting friction/growth, but are not the only or dominant dynamic. Not overbearing or predictive.
-- Focus: overwhelmingly the team bond (85%). Light external validation (~15%) on specific voids (mentor/trainer/deity) that Meyiu can't fill — this is okay and creates enjoyable friction as long as the player doesn't feel like they're "losing her".
-- Romantic tension: playful, charged, slow-burn, full of possibility. Subtle (not the driver). Sera will **not** fall for or crush on anyone else.
-- Sera is growing into confidence. She makes right and wrong calls for understandable reasons. When her decisions differ, Meyiu learns to trust/accept her → bond strengthens.
-- Friction on "how" (tactics) is fun. Friction on "what" (ethics/values) is important but should be used sparingly.
-- Losing her would mean: loss of trust, no longer enjoying her company, no longer caring, or feeling annoyed by her.
+- One-life, non-repeatable journeys (roguelike + Tamagotchi spirit). Once a life is lived, it is over. No new game, no reloads for the same characters.
+- The engine is a **canvas** for characters to grow, unfold, and impress themselves onto the world.
+- Future: Players create their own player + companion characters (different wounds, grails, personalities). Engine provides scenarios, physics, and systems.
+- Long-term: JRPG tactical combat (FF/Diablo style), character progression, possible multi-player hosted worlds.
+- Current focus (B): Build the "physics" and canvas (combat, action systems, extensible characters) while keeping the current run sacred and meaningful. Meta/emo/philosophical side + mechanical frame together.
 
-**What was just implemented (latest improvement state):**
-- Visible Trust/Bond/Shared actions + "Sera has chosen..." lines in main status.
-- `sera_record_joint_experience()` hooked after key shared moments (medicine, talk, sheriff, buckler).
-- Sera visibly takes 30% lead in practical moments (e.g. organizing scouts and supplies with her own words).
-- Explicit "Sera chooses the journey" narrative lines after meaningful agency.
-- Light external validation example added (Old Brenn tip).
-- Updated DB notes and companion.md with full refined model.
+**What was just implemented:**
+- Recent event tracker (`sera_recent_event`): Talk after meaningful actions (defend, joint, medicine) gives stronger contextual bond. Repetition heavily penalized. Actions drive stats; timely words amplify.
+- Basic turn-based combat prototype (dice via RANDOM, abilities from character, enemy stub, HP updates, simple player choices). Hooked into sheriff choice for testing.
+- Bond/leadership visible in status; Sera can take 30% lead.
+- Slower burn overall for trust/bond. Passive decay (-1 per action) + repetition penalties + occasional drops from bad/risky choices keep it from being a pure upward climb. High values (70+) unlock warmer, more committed Sera responses. Low values create visible tension and fragility.
+- Combat as starting "physics" layer for JRPG tactical action (expandable for mage custom).
 
-**Next concrete steps (prioritized 1-5):**
-1. Hook `sera_record_joint_experience()` in more natural places (defense planning, using items together, other shared actions).
-2. Add 1-2 more Sera-led moments (30% side) in current defense flow (e.g. she decides healing distribution or sets signals).
-3. Light external validation: one small positive thing when she interacts with others (Sheriff, Brenn, villager) + tiny bond/trust side effect.
-4. Make "Sera chose this" even louder after big moments (dedicated lines, status updates based on bond).
-5. (Polish) Use existing joint/leadership counters to occasionally tip her into visible 30% lead role. Add tiny `sera_leadership_moments` tracking if helpful.
+**Next steps (canvas & physics focus):**
+- Expand recent_event usage and add more contextual bonuses.
+- Flesh out combat: proper enemy table or state, mage abilities (fire, elements), status effects, tactical choices.
+- Character creation / custom mage support: flexible abilities, starting kits, so user can create their own mage.
+- Make characters more generic (beyond hardcoded Meyiu/Sera) for future different lives.
+- Scenarios that trigger combat or risk (to make "after battle" talk meaningful).
+- Keep pure bash + MariaDB. No frameworks.
 
-**Key principles for future play:**
-- Always make Sera's choice feel real and player-rewarding.
-- 70/30 leadership with growth.
-- Wounds as texture, not rules.
-- Build trust through actions and shared experiences.
-- Keep the experience enjoyable like a favorite long-running series.
+**Principles:**
+- One life per set of characters. Permanent consequences.
+- Actions > words, but words contextualize and make actions "seen".
+- Build the frame so different characters can play different stories on the same canvas.
+- Mix mechanical depth (combat, progression) with emotional depth (bond, ethics, growth).
+- Play/build cycle continues; test in current run where it fits.
 
-Read this section at the start of any new session.
+Read this section at the start of any new session to stay aligned.
+
+## Roadmap & Milestones
+
+This is the living roadmap for building the "canvas" — the physics, systems, and mechanics that will allow many different characters (and their companions) to live unique, non-repeatable lives.
+
+**Core Philosophy**
+- One life per set of characters (no new game for the same people).
+- Growth through use ("muscle memory") more than point assignment.
+- Contextual practice matters (creative or difficult use accelerates development).
+- Atrophy is real (neglect skills → they degrade).
+- Equipment and abilities are deeply integrated.
+- The engine provides the frame; characters impress themselves on it.
+
+### Milestone 1: Core Canvas & One-Life Foundation (Current / Mostly Done)
+- Persistent single world in MariaDB (the save file).
+- Immersive terminal UI (full-screen, push/pop navigation, green phosphor aesthetic).
+- Basic character sheets, inventory (with equipped flag), world state, maps.
+- Sera as full autonomous companion with trust/bond/recent-event system.
+- Slow-burn relationship mechanics with decay and contextual bonuses.
+- Basic combat prototype with mage abilities.
+
+### Milestone 2: Equipment & Ability System (Phase 1 — In Progress)
+- Proper equipment slots (weapon, off-hand, armor, focus, accessory...).
+- Equipment modifiers that affect abilities and combat (e.g. staff boosts Firebolt damage).
+- Pull abilities dynamically from `character_abilities` table into combat.
+- Basic proficiency tracking (usage counter) on abilities.
+- First usage-based bonuses (e.g. repeated Firebolt use slowly increases power or adds effects).
+- Equip/unequip flow visible in inventory and status.
+
+### Milestone 3: Usage-Based Skill Development (Muscle Memory)
+- Abilities improve primarily through use, not points.
+- Contextual bonuses: difficult or creative use (e.g. casting while defending, while low HP, while performing another action) grants faster growth.
+- "Practice" actions or mini-scenarios that deliberately train skills.
+- Proficiency levels unlock new options or stronger versions of abilities.
+
+### Milestone 4: Atrophy & Maintenance
+- Unused abilities slowly lose proficiency over "time" (action count or sessions).
+- Neglect has visible consequences (weaker effects, failed casts, Sera comments).
+- Optional "maintenance" or training activities to keep skills sharp.
+
+### Milestone 5: Skill Trees / Progression
+- Progression emerges from demonstrated mastery + contextual breakthroughs.
+- Branching based on how the character actually plays (not just assigned points).
+- Different characters discover different paths.
+
+### Milestone 6: Tactical Combat Depth (JRPG / FF / Diablo Style)
+- Full turn-based tactical combat with proper ability integration.
+- Elements, status effects, targeting, positioning concepts.
+- Risk/reward, overcast, combo potential.
+- Combat that meaningfully affects the relationship (Sera reacts to performance).
+
+### Milestone 7: Character Creation & Custom Lives
+- Simple creation flow for new player + companion characters.
+- Define starting wounds, grails, core abilities, equipment kits.
+- Support for multiple "lives" (each a fresh, non-repeatable story on the same canvas).
+
+### Milestone 8: World Reactivity & Legacy
+- Characters leave lasting marks on the world (reputation, changed locations, persistent events).
+- World remembers and reacts to the specific people who lived there.
+
+### Milestone 9: Multi-Player / Hosted Worlds (Long-term Vision)
+- Multiple players can create their own characters + companions.
+- Shared or parallel worlds.
+- Eventually a hosted canvas where different "lives" can interact or leave echoes.
+
+**Current Focus**: Milestone 2 (Equipment + Ability System) while keeping the current life sacred and testing mechanics in context.
+
+**Recent Polish (Combat UI)**: Combat avatars now use larger bordered game-card tiles with generous internal padding so ASCII art and minimal stats (HP bars) have breathing room and are not "boxed in". Clear PLAYER/ENEMY labels and visual separation for better eye guidance on the combat screen. Updated in draw_ascii_combatants().
+
+We will continue to interleave "play" and "build" so the systems are validated through actual use.
 
 ---
 
