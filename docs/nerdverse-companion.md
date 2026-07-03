@@ -92,14 +92,33 @@ This session demonstrated early companion interaction and healing mechanics. Goo
 
 State saved. Ready for next input.
 
+### 2026-07-02 — Session Wrap: Measured Defense at the Inn
+
+**Player Decision**
+Meyiu chose to stay and help defend the villagers "as much as we can without being foolish." He ordered exactly two scouts to warn and retrieve stragglers outside town, with strict no-engagement orders — "we need every able-bodied man in the defense." This embodied the core theme of measured responsibility ("Not every burden is mine") while still committing to the immediate threat.
+
+**Sera's Response (Final Move)**
+Sera stood, checked her buckler, and gave a hard, approving nod. "Smart. Not heroic. Two scouts. No fights. We bring people in, then we make this place cost them more than they want to pay. I'll back your play, pilgrim. But we do it smart, or we don't do it at all." She glanced at the failing light. "Sheriff first, then we pick our runners. The gang won't wait for us to finish talking."
+
+**What Was Built / Logged**
+- Decision and scouts order persisted in DB (`scouts_status`, `defense_focus`, `brindleford_preparedness = Medium`).
+- Strong narrative tie-in to Meyiu's character arc (boundaries, detours, journey preservation).
+- Clean pause point at the inn with active defense planning beginning.
+
+Session paused. Excellent foundation for resume.
+
+---
+
+## Current Game State (Living Snapshot)
+
 ---
 
 ## Current Game State (Living Snapshot)
 
 **Location:** Sera's Medicine Room  
-**Immediate Context:** Meyiu and Sera have entered the medicine room to inventory the recovered medicine crate. Meyiu's ribs have been tended.
+**Immediate Context:** After supper at the Hearthmouse Inn, Meyiu voiced a clear, measured decision: stay and help defend the villagers without foolishness. Exactly two scouts to be sent to warn and retrieve stragglers (strict no-engagement orders — every able body needed for defense). The group is preparing to coordinate with Sheriff Marn and begin practical village defense.
 
-**Time Pressure:** The Black Bridge Gang expected the thieves back. Retaliation possible by dusk or midnight.
+**Time Pressure:** The Black Bridge Gang expected the thieves back. Retaliation possible by dusk or midnight. Light is failing.
 
 ### Meyiu — The Sinner Who Still Chooses
 
@@ -111,6 +130,7 @@ State saved. Ready for next input.
 | Class          | Mage |
 | Level / Milestone | 2 |
 | Current HP     | 13 / 13 (full) |
+| Location       | Hearthmouse Inn |
 | Coins          | 4 silver |
 | Road XP        | 5 / 10 |
 | Location       | Sera's Medicine Room |

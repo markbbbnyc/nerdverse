@@ -41,7 +41,9 @@ The bootstrap is **idempotent**. It also creates a dedicated low-privilege Maria
 
 **Phase 0 — The First Forge**
 
-We are at the very beginning of Brindleford. State is loaded directly from the original restart packet.
+Current pause point: Hearthmouse Inn after supper. Meyiu has committed to measured village defense (2 scouts sent with strict no-engagement orders). See `docs/nerdverse-companion.md` for full living state.
+
+State is persisted in the `nerdverse2` MariaDB database and can be resumed via the scripts.
 
 ## Long-term Goals
 
