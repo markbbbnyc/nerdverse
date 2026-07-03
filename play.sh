@@ -261,6 +261,7 @@ show_status() {
     load_player
     load_sera
     load_world
+    load_sera_state   # for trust/bond/joint
 
     # Content only — outer header provided by render_main via draw_screen_header
     printf "  ${GREEN}Location${RESET} : %s\n" "${LOCATION}"
@@ -270,6 +271,11 @@ show_status() {
     echo
     printf '  %sSera Thornwake%s  (HP %d/%d)  —  %s%s...%s\n' \
         "$AMBER" "$RESET" "$SERA_HP" "$SERA_MAX" "$GRAY" "${SERA_NOTES:0:70}" "$RESET"
+    echo
+    # Visible "Sera is choosing" reward
+    local joint=${SERA_JOINT:-0}
+    printf '  %sSera\'s Bond:%s  Trust %s  |  Bond %s  |  Shared actions: %s\n' \
+        "$GREEN" "$RESET" "${SERA_TRUST:-35}" "${SERA_BOND:-25}" "$joint"
     echo
     printf '%sChapter: %s%s\n' "$DIM" "$CHAPTER" "$RESET"
     printf '%sThreat : %s%s\n' "$DIM" "$THREAT" "$RESET"
@@ -315,6 +321,110 @@ sera_says() {
     local line="$1"
     printf '%sSera:%s "%s"\n' "$YELLOW" "$RESET" "$line"
     log_narrative "Sera: ${line}"
+}
+
+# === Sera Agency System (full autonomous companion) ===
+# Sera is a full player. She chooses the journey.
+# Togetherness is built through bantering + actions that "walk the talk."
+# Major reward: the felt sense that she is actively choosing you.
+# Leadership ~70% Meyiu / 30% Sera. Wins and losses are lessons.
+# She will sometimes seek alignment elsewhere on specific topics (15%).
+# She decides on her own. Sometimes she leads. The bond grows through shared experience.
+
+load_sera_state() {
+    SERA_TRUST=$(db_query "SELECT value FROM world_state WHERE state_key='sera_trust_level';")
+    SERA_BOND=$(db_query "SELECT value FROM world_state WHERE state_key='sera_bond_level';")
+    SERA_MOOD=$(db_query "SELECT value FROM world_state WHERE state_key='sera_mood';")
+    SERA_GRAIL=$(db_query "SELECT value FROM world_state WHERE state_key='sera_personal_grail';")
+    SERA_PRINCIPLES=$(db_query "SELECT value FROM world_state WHERE state_key='sera_core_principles';")
+    SERA_ROMANTIC=$(db_query "SELECT value FROM world_state WHERE state_key='sera_romantic_tension';")
+    SERA_JOINT=$(db_query "SELECT value FROM world_state WHERE state_key='sera_joint_experiences';")
+}
+
+sera_update_state() {
+    local key="$1"
+    local value="$2"
+    db_exec "UPDATE world_state SET value='${value}' WHERE state_key='${key}';"
+}
+
+# Call this after meaningful shared actions or experiences.
+# This is one of the primary ways the bond grows.
+sera_record_joint_experience() {
+    load_sera_state
+    local current=${SERA_JOINT:-0}
+    local new=$(( current + 1 ))
+    sera_update_state "sera_joint_experiences" "$new"
+
+    # Walking the talk builds real trust and bond
+    local t=$(( ${SERA_TRUST:-35} + 2 ))
+    local b=$(( ${SERA_BOND:-25} + 3 ))
+    [[ $t -gt 100 ]] && t=100
+    sera_update_state "sera_trust_level" "$t"
+    sera_update_state "sera_bond_level" "$b"
+}
+
+# Sera exercises agency. She is choosing.
+# This should feel visible and rewarding to the player.
+sera_exercise_agency() {
+    load_sera_state
+
+    local choice_context="$1"
+    local trust_change=0
+    local bond_change=0
+    local mood_shift=""
+    local her_action=""
+    local her_words=""
+
+    case "$choice_context" in
+        *"defend"*|*"protect"*|*"measured"*|*"scouts"*)
+            if [[ "$SERA_TRUST" -gt 25 ]]; then
+                trust_change=6
+                bond_change=5
+                her_words="You meant it. Not just talk. I saw it in the orders — and in what you were willing to risk yourself."
+                her_action="Sera steps forward and takes the lead on the practical side: \"I'll sort the scouts' packs and a simple fallback signal. You handle the Sheriff and the core plan. We do this as a team.\""
+            fi
+            ;;
+        *"risk"*|*"heroic"*|*"noble"*|*"but"*)
+            trust_change=-7
+            mood_shift="cutting"
+            her_words="That was the kind of brave that gets good people killed. We don't have that luxury."
+            ;;
+        *"listened"*|*"saw me"*|*"didn't ask me to shrink"*)
+            bond_change=7
+            trust_change=4
+            her_words="You looked at me like I'm allowed to be exactly this sharp and still worth keeping around."
+            if [[ "$SERA_ROMANTIC" == *"emerging"* ]]; then
+                her_action="She stays a little closer while you work. No big gesture — just presence that wasn't there before."
+            fi
+            ;;
+        *)
+            her_words="We'll see what that actually costs."
+            ;;
+    esac
+
+    local new_trust=$(( ${SERA_TRUST:-35} + trust_change ))
+    local new_bond=$(( ${SERA_BOND:-25} + bond_change ))
+    [[ $new_trust -lt 0 ]] && new_trust=0
+    [[ $new_trust -gt 100 ]] && new_trust=100
+
+    sera_update_state "sera_trust_level" "$new_trust"
+    sera_update_state "sera_bond_level" "$new_bond"
+    [[ -n "$mood_shift" ]] && sera_update_state "sera_mood" "$mood_shift"
+
+    if [[ -n "$her_words" ]]; then
+        echo
+        printf '%sSera:%s "%s"\n' "$YELLOW" "$RESET" "$her_words"
+        log_narrative "Sera (choosing the journey): ${her_words}"
+    fi
+
+    if [[ -n "$her_action" ]]; then
+        echo -e "${GRAY}Sera moves on her own: ${her_action}${RESET}"
+        log_narrative "Sera acted independently: ${her_action}"
+    fi
+
+    if [[ $new_trust -lt 20 ]]; then
+        echo -e "${DIM}(The choice to stay is more visible right now. And more fragile.)${RESET}"
+    fi
 }
 
 # === Map viewing (new in this pass) ===
@@ -455,7 +565,8 @@ while true; do
                     db_exec "UPDATE characters SET location = 'Sera''s Medicine Room' WHERE is_player = TRUE;"
                     db_exec "UPDATE world_state SET value = 'Arrived at medicine room to inventory the recovered crate.' WHERE state_key = 'last_major_event';"
                     log_narrative "Meyiu chose to follow Sera to the medicine room."
-                    # Re-render will show updated location + Sera will comment next time main is shown
+                    sera_record_joint_experience
+                    sera_exercise_agency "chose to follow her into the work instead of grand gestures"
                     ;;
                 2|inventory)
                     push_screen "inventory"
@@ -464,6 +575,8 @@ while true; do
                     echo
                     sera_says "You bought practical gear instead of shiny magic. That counts for something."
                     sera_says "Do not wave the buckler around like a dinner plate. Keep it between your ribs and the thing trying to open them."
+                    sera_record_joint_experience
+                    sera_exercise_agency "actually listened and saw her as more than useful"
                     read -r -p "Press enter..."
                     ;;
                 4|inn)

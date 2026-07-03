@@ -28,7 +28,11 @@ It serves three purposes at once:
 - *Context before category.*
 - *Repair must become practical.*
 
-We are building a pure **bash + MariaDB** text adventure / solo RPG engine. No Python, no Node, no fancy frameworks. The goal is maximum portability and learnability.
+We are building a pure **bash + MariaDB** text adventure where two characters walk a shared (but not identical) hero’s journey.
+
+This is not a story with a companion. This is a story of two protagonists — Meyiu and Sera — each on their own path toward something like a Grail. Their friendship, loyalty, ethics, and slow-burn tension are central. Sera is a full autonomous player with real agency. She can support, challenge, act independently, or pull away. The fear of losing her (as friend, ally, sparring partner, or something more) is intentional and meaningful.
+
+The game is designed to feel like a favorite never-ending series: ongoing character arcs, moral weight, playfulness, and the quiet joy of two people becoming more themselves together while the world keeps turning.
 
 ---
 
@@ -177,13 +181,42 @@ Old (green screen, function-key navigation, push/pop screens) meets new (unicode
 - Repair and Supply Bundle (recent)
 - Cinder Nameplate, Black Brazier-Glass Shard, Gray-Blue Question Slip, White Quill Splinter, Road Knife, Black Bridge-Token, etc.
 
-### Sera Thornwake (Companion Prospect)
+### Sera Thornwake (Full Autonomous Companion)
 
-| Field   | Value |
-|---------|-------|
-| HP      | 14 / 14 |
-| Role    | Field-healer, trail archer, buckler fighter |
-| Status  | With Meyiu in Brindleford, provisional trust. Not yet permanently recruited. |
+Sera is no longer a supporting character. She is a full player on her own hero’s journey, walking beside Meyiu. She has real agency, her own “Grail,” and the capacity to choose, stay, or walk away.
+
+**Current Inner State** (as of latest play):
+- Trust in Meyiu: 35/100 (provisional but rising with real care)
+- Bond: 25/100 (growing, fragile)
+- Mood: wary-but-warming
+- Personal Grail: “To find a place where healing is not just patching wounds but mending what makes people break in the first place. A home that doesn’t ask her to dull her edges.”
+- Core Principles: Practical mercy above heroics. No life is expendable if it can be saved without wasting others. Truth, even when it cuts. Protect the living over abstract causes.
+- Romantic tension: emerging-playful (slow-burn, charged, full of possibility). She will not fall for anyone else. The fear of losing her — as friend, ally, sparring partner, or something more — is real and intentional.
+
+**Wounds (refined based on collaborative exploration):**
+
+**Wound 1 – The Triage Wound ([5])**  
+In a brutal winter siege (or similar zero-sum survival scenario), Sera was in a position of responsibility. Resources were critically low. She faced the horrible math of triage: to keep the group viable as a whole, some of the weakest had to receive less so that the stronger/protectors could be fed and healed enough to hold the line. She made (or was forced to enforce) those calls. People died who might have lived with more mercy. She carries the weight that "suicidal empathy" — unchecked compassion that risks the whole herd — can be just as deadly as cruelty. This wound makes her fiercely practical and suspicious of grand gestures or pure-hearted but shortsighted mercy. It sometimes conflicts with her desire to protect the vulnerable, but it is not the defining center of her personality.
+
+**Wound 3 – The "Dull Your Edges" Wound ([4])**  
+She has repeatedly been asked (by leaders, companions, potential partners) to soften her tongue, hide her competence, or make herself more palatable so she wouldn’t threaten egos or "make trouble." She tried at times, wanting to belong. It always ended with her being used and then discarded when her sharpness became inconvenient.
+
+She starts expecting that Meyiu will eventually ask her to be smaller or tone herself down. When she realizes he genuinely has no such intention (even if he sometimes comes across that way for other reasons she doesn’t yet fully understand), the pull and relief is very strong [8]. She is learning to stop seeking that kind of external validation and instead find people/entities who want to play "endless collaborative games" (invitation and co-creation) rather than zero-sum "I win" dynamics. She will sometimes seek validation or alignment from others besides Meyiu (e.g. a mentor, trainer, or deity on specific topics). This can create enjoyable gameplay friction, but the core experience is the enjoyment of building trust on many different levels — not an insecurity drama.
+
+Wounds 2 and 4 are de-emphasized.
+
+These wounds make full voluntary commitment feel risky and costly — which is exactly why when Sera *chooses* to tie her fate to Meyiu’s (work, play, adventure, share, endure, and fight together), it carries real weight and can become something tender and sacred. She decides on her own that they are on this journey together. Sometimes Meyiu leads, sometimes she leads. The "grudging" quality exists as an undertone, not the defining or predictive feature. The wounds are recognizable flavor and texture in a gameful, eye-opening way, not rigid rules that force fate.
+
+**The Bond (Togetherness) — Refined**
+- Togetherness lives primarily in bantering and in actions that "walk the talk." Words alone are not sufficient. Shared experiences and joined actions are how real meaning and connection are exchanged.
+- A core player reward is the felt sense that Sera is actively choosing Meyiu and the journey (her agency is visible and satisfying — this is intentional dopamine).
+- Leadership split is roughly 70% Meyiu leading, 30% Sera leading. Both have wins and "losses," but losses are lessons learned that make them stronger together. This is a game meant to be played and enjoyed, not grim real-life simulation.
+- Sera is growing into her confidence. She will make the right calls sometimes and the wrong ones sometimes, but for understandable reasons. When her decisions are not Meyiu’s preferred choice, he will have to learn to trust or accept her — and that deepens the bond.
+- The overwhelming focus (85%) is on the team bond between them. ~15% is external validation or alignment on specific "voids" that Meyiu cannot fill (e.g. a mentor, trainer, or deity on particular topics). Meyiu is genuinely glad she has those.
+- Friction on tactics ("the how") is fun and welcome. Deeper arguments on ethics, values, or "the what" are important but should not happen too frequently.
+- Losing her would mean: no longer being able to trust her, no longer enjoying her company, no longer caring about her, or feeling annoyed by her. She will not develop romantic feelings for or a crush on anyone else.
+
+She will support, challenge, act on her own, and react with the full weight of her history and principles. This is a story of two people becoming more themselves together.
 
 Her abilities (known):
 - Bow Shot — 3 damage
@@ -311,6 +344,7 @@ The scripts will source this if present.
   - AS/400-style push/pop screen navigation stack (F3/Enter to pop back). Info screens are first-class pushed views.
   - Green-screen / amber aesthetic (prefers `tput` for TERM compatibility; safe ESC fallback). Sparse nerdfont icons + box drawing.
   - Features: [7] World Map (explored Brindleford Vale), [8] Local Map (current setting), [9] Character Sheets (Meyiu + Sera — live stats, equipped gear, abilities, traits, role).
+  - **Sera as full autonomous player**: She maintains real internal state (trust_level, bond_level, mood, core_principles, personal_grail, romantic_tension). After meaningful choices she can speak with weight, take independent actions, push back on plans, or draw closer. The fear of losing her (as friend, ally, sparring partner, or something more) is real. She will not fall for anyone else. Romantic tension is playful, charged, and slow-burn.
   - ANSI-aware layout (visible length stripping so codes/icons don't break alignment).
   - All output via safe `printf`; robust in ssh/tmux/Linux/macOS/non-tty.
 - Maps system: whimsical ASCII in `maps/*.txt` (source of truth + human docs). Loaded into `maps` table on every `./scripts/apply_migrations.sh` (via 002 migration + loader).
