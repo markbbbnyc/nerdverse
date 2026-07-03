@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # scripts/apply_migrations.sh
-# Idempotent migration runner for Nerdverse.
-# Run this as many times as you like.
+# Idempotent migration + map loader for Nerdverse.
+# Run this as many times as you like. It also loads whimsical ASCII maps
+# from maps/*.txt into the DB (for play.sh world/local maps).
 
 set -euo pipefail
 
@@ -64,6 +65,41 @@ for seed in $(ls -1 "${SEEDS_DIR}"/*.sql 2>/dev/null | sort); do
         echo "    ! seed had errors (may be harmless if using ON DUPLICATE)" >&2
     fi
 done
+
+echo
+echo "Loading whimsical maps (from maps/*.txt) into database..."
+MAPS_DIR="${PROJECT_ROOT}/maps"
+if [[ -d "$MAPS_DIR" ]]; then
+    for mfile in $(ls -1 "${MAPS_DIR}"/*.txt 2>/dev/null | sort); do
+        map_key=$(basename "$mfile" .txt)
+        raw_title=$(head -n 1 "$mfile")
+        title_esc=$(printf '%s' "$raw_title" | sed "s/'/''/g")
+        ascii=$(tail -n +2 "$mfile")
+
+        case "$map_key" in
+            world)   mtype="world"; related="" ;;
+            *)       mtype="local"; related="$map_key" ;;
+        esac
+
+        # Build INSERT safely so newlines in ascii become real newlines inside the SQL string literal
+        (
+            printf "INSERT INTO maps (map_key, title, ascii, map_type, related_location, revealed)
+VALUES ('%s', '%s', '" "$map_key" "$title_esc"
+            printf '%s' "$ascii" | sed "s/'/''/g"
+            printf "', '%s', '%s', TRUE)
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    ascii = VALUES(ascii),
+    map_type = VALUES(map_type),
+    related_location = VALUES(related_location),
+    revealed = TRUE;\n" "$mtype" "$related"
+        ) | $MARIADB
+
+        echo "  ✓ map '${map_key}' loaded/updated"
+    done
+else
+    echo "  (no maps/ dir found — skipping)"
+fi
 
 echo
 echo "=== Migration run complete ==="

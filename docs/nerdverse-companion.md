@@ -67,7 +67,7 @@ The foundation scripts are now real and tested:
 - `bootstrap.sh` creates `nerdverse.env`, ensures DB access, and delegates to the migration runner.
 - `scripts/apply_migrations.sh` is fully idempotent. It applies `sql/migrations/*.sql` in order and records them in `schema_migrations`. Seeds are re-runnable.
 - `scripts/db.sh` centralizes connection logic and helpers.
-- `play.sh` (Phase 0) loads live state from the database, prints a nice status block, shows crude ASCII, and lets you pick basic actions. It already updates the DB for some choices.
+- `play.sh` (Phase 0, heavily evolved) is now a full immersive terminal experience: clears for "full screen" feel, centered/adaptive content, AS/400-style push/pop screen navigation (F3=Back etc.), green phosphor/amber aesthetic with sparse decorations and nerdfont icons (graceful on plain terminals). Features dedicated [7] World Map, [8] Local Map (per current location), [9] Character Sheets (live DB data for Meyiu + Sera with traits/gear/abilities in clean old-terminal + LaTeX-inspired layout). All output safe for ssh/tmux/Linux/macOS. Updates DB live. Maps loaded from source files into DB.
 - Full initial world (Meyiu + Sera stats, inventory with correct equipped flags, passives, Brindleford locations, world_state flags) was seeded exactly from the restart packet.
 
 *Ran successfully on the original machine. The state in nerdverse2 matches the PDF save point.*
@@ -106,6 +106,35 @@ Sera stood, checked her buckler, and gave a hard, approving nod. "Smart. Not her
 - Clean pause point at the inn with active defense planning beginning.
 
 Session paused. Excellent foundation for resume.
+
+### 2026-07-03 — Terminal Canvas & Navigation Overhaul (UI Phase)
+
+**Motivation**
+The original play.sh was functional but felt like a basic menu. We wanted a more immersive "full screen" old-terminal experience that still feels modern and enjoyable — bridging 80s green-screen RPGs / AS/400 operator consoles with fantasy text adventure, while working reliably over ssh, in tmux, on Linux (Ubuntu/Arch) and macOS.
+
+**What We Built / Changed**
+
+- Major refactor of `play.sh`:
+  - Screen clearing on transitions for true "full screen" canvas feel.
+  - Centered content + adaptive wide headers using `tput cols` + `stty` fallbacks (robust when tput is missing or TERM is weird).
+  - AS/400-style push/pop navigation stack (`SCREEN_STACK`, `push_screen`/`pop_screen`, F3=Back semantics). Info views (maps, sheets) are pushed screens; any reasonable key pops back.
+  - Green phosphor / amber aesthetic (tput setaf when available for best TERM compatibility, safe ESC byte fallback). Sparse decorations, nerdfont icons (🗺 📜 👤 ⏏ — degrades gracefully).
+  - ANSI-aware visible length stripping (`visible_len()`) so color codes and multibyte icons don't break centering or box right borders.
+  - All styled output now via `printf` (no more escape leakage or interpretation surprises).
+  - Menu options expanded: [7] World Map, [8] Local Map (current location), [9] Character Sheets. Old actions (inventory, buckler lore, etc.) also feel like quick sub-views.
+  - Character sheets: clean fields, equipped gear (live query), techniques/abilities, curated carried items, traits, role notes — mixed AS/400 field labels + Ultima-style bullets + LaTeX whitespace-heavy sections.
+  - Maps system: whimsical ASCII sources in `maps/` (world + per-location), loaded into new `maps` table by `scripts/apply_migrations.sh` (new `sql/migrations/002_maps.sql`). World map shows explored Brindleford region; locals are location-specific (forge, medicine room, inn, etc.).
+- `scripts/apply_migrations.sh` extended to load maps from files into DB on every run (idempotent upserts).
+- Fixed cross-environment bugs: unbound variables under `set -u`, literal `\033` in output, centering miscalc, clear in non-tty, tput/stty portability.
+- play.sh now feels like a real retro terminal app you can live in while playing the RPG.
+
+**Compatibility**
+Tested/ensured for: local macOS terminal, ssh (with and without -t), tmux, Linux (Ubuntu/Arch base installs). Falls back gracefully when no tput, no color, small terminal, or piped output.
+
+**Philosophy**
+Old (green screen, function-key navigation, push/pop screens) meets new (unicode boxes, dynamic colors via tput, visible-length math). Still 100% pure bash + MariaDB. The "canvas" itself is now part of the experience.
+
+*Ran beautifully. The game now has a real terminal personality that matches the "unfinished but choosing" theme.*
 
 ---
 
@@ -276,12 +305,19 @@ The scripts will source this if present.
 
 ## Technical Architecture (Current)
 
-- All state lives in MariaDB `nerdverse2`.
-- Bash scripts only for the engine and UI.
+- All state lives in MariaDB `nerdverse2` (the save file).
+- **play.sh** is the full terminal experience:
+  - "Full screen" canvas: clears on navigation, centered content, adaptive-width headers (tput + stty fallbacks).
+  - AS/400-style push/pop screen navigation stack (F3/Enter to pop back). Info screens are first-class pushed views.
+  - Green-screen / amber aesthetic (prefers `tput` for TERM compatibility; safe ESC fallback). Sparse nerdfont icons + box drawing.
+  - Features: [7] World Map (explored Brindleford Vale), [8] Local Map (current setting), [9] Character Sheets (Meyiu + Sera — live stats, equipped gear, abilities, traits, role).
+  - ANSI-aware layout (visible length stripping so codes/icons don't break alignment).
+  - All output via safe `printf`; robust in ssh/tmux/Linux/macOS/non-tty.
+- Maps system: whimsical ASCII in `maps/*.txt` (source of truth + human docs). Loaded into `maps` table on every `./scripts/apply_migrations.sh` (via 002 migration + loader).
 - Migrations are plain `.sql` files applied in lexical order.
 - A `schema_migrations` table prevents re-application.
 - Session log is append-only for narrative + debugging.
-- Future: simple command dispatch in bash using `case` + functions.
+- Bash + MariaDB client only. No other runtimes. Maximum portability and learnability.
 
 ---
 

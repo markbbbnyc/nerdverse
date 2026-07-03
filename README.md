@@ -29,11 +29,12 @@ The bootstrap is **idempotent**. It also creates a dedicated low-privilege Maria
 ## Project Structure
 
 - `bootstrap.sh` — one-command setup for new systems
-- `play.sh` — the game
+- `play.sh` — the game (immersive terminal UI: full-screen canvas, centered, AS/400 push/pop navigation, green-screen colors + icons, world + local maps, character sheets)
 - `install-deps.sh` or see `docs/linux-packages.md` — target Linux package list
 - `scripts/` — db helpers, migration runner
-- `sql/migrations/` — numbered, re-runnable schema
+- `sql/migrations/` — numbered, re-runnable schema (incl. 002_maps)
 - `sql/seeds/` — initial world + character state
+- `maps/` — source ASCII for world + local maps (loaded into DB)
 - `docs/` — companion docs (.md is the easy daily read, .tex for PDF, build-docs.sh)
 - `nerdverse.env` — local DB config (**never committed** — use `nerdverse.env.example`)
 
@@ -42,6 +43,8 @@ The bootstrap is **idempotent**. It also creates a dedicated low-privilege Maria
 **Phase 0 — The First Forge**
 
 Current pause point: Hearthmouse Inn after supper. Meyiu has committed to measured village defense (2 scouts sent with strict no-engagement orders). See `docs/nerdverse-companion.md` for full living state.
+
+`play.sh` now delivers a proper retro-terminal experience (centered full-screen feel, AS/400-style screen stack, green phosphor aesthetic, maps, character sheets).
 
 State is persisted in the `nerdverse2` MariaDB database and can be resumed via the scripts.
 
@@ -57,7 +60,7 @@ State is persisted in the `nerdverse2` MariaDB database and can be resumed via t
 
 When you come back to this in 2027 or later:
 - Read the companion .tex (or the compiled PDF).
-- Run `./bootstrap.sh` then `./play.sh`.
+- Run `./bootstrap.sh` then `./play.sh` (now with full terminal personality: maps, sheets, nice navigation).
 - The database *is* the save file.
 
 Enjoy the road.
