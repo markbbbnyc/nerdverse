@@ -14,6 +14,35 @@ _prog_char_id() {
     db_query "SELECT id FROM characters WHERE name='${name}' LIMIT 1;"
 }
 
+# Companion progression snapshot (same mechanics as player — separate track).
+prog_load_sera_progress() {
+    local row _old_ifs
+    row=$(db_query_row "SELECT prog_level, road_xp, road_xp_max, breakthrough_pending FROM characters WHERE name='Sera Thornwake' LIMIT 1;")
+    _old_ifs="$IFS"
+    IFS=$'\t'
+    read -r SERA_PROG_LEVEL SERA_ROAD_XP SERA_ROAD_XP_MAX SERA_BREAKTHROUGH_PENDING <<< "$row" || true
+    IFS="$_old_ifs"
+    SERA_PROG_LEVEL="${SERA_PROG_LEVEL:-1}"
+    SERA_ROAD_XP="${SERA_ROAD_XP:-0}"
+    SERA_ROAD_XP_MAX="${SERA_ROAD_XP_MAX:-10}"
+    SERA_BREAKTHROUGH_PENDING="${SERA_BREAKTHROUGH_PENDING:-0}"
+}
+
+prog_show_sera_progress() {
+    prog_load_sera_progress
+    local pk pts tags
+    printf '  %sSera progression%s  Lv%s  Road %d/%d' \
+        "$CYAN" "$RESET" "$SERA_PROG_LEVEL" "$SERA_ROAD_XP" "$SERA_ROAD_XP_MAX"
+    [[ "${SERA_BREAKTHROUGH_PENDING:-0}" -eq 1 ]] && printf '  %s◆ BREAKTHROUGH READY%s' "$AMBER" "$RESET"
+    echo
+    tags=""
+    while IFS=$'\t' read -r pk pts; do
+        [[ -z "$pk" ]] && continue
+        tags="${tags}${tags:+, }${pk}:${pts}"
+    done < <(prog_top_practices "Sera Thornwake" 3)
+    [[ -n "$tags" ]] && printf '  %sPractice:%s %s\n' "$DIM" "$RESET" "$tags"
+}
+
 _prog_diminishing() {
     local current="${1:-0}"
     local gain="${2:-1}"

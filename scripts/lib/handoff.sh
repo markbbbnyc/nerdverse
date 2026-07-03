@@ -47,7 +47,13 @@ handoff_write() {
         echo "Continue Nerdverse. Meyiu — The Sinner Who Still Chooses."
         echo "DB: ${DB_NAME}. Location: ${LOCATION} (${LOCATION_KEY})."
         echo "HP ${CUR_HP}/${MAX_HP} | Coins ${COINS} | Road XP ${ROAD_XP}/${ROAD_XP_MAX}"
-        echo "Sera: Trust ${trust}/100, Bond ${bond}/100 | Shared ${joint} | She led ${lead}"
+        local sera_lvl sera_rxp sera_rxmax sera_bk
+        sera_lvl=$(db_query "SELECT prog_level FROM characters WHERE name='Sera Thornwake' LIMIT 1;")
+        sera_rxp=$(db_query "SELECT road_xp FROM characters WHERE name='Sera Thornwake' LIMIT 1;")
+        sera_rxmax=$(db_query "SELECT road_xp_max FROM characters WHERE name='Sera Thornwake' LIMIT 1;")
+        sera_bk=$(db_query "SELECT breakthrough_pending FROM characters WHERE name='Sera Thornwake' LIMIT 1;")
+        echo "Sera: Lv${sera_lvl:-1} Road ${sera_rxp:-0}/${sera_rxmax:-10} | Trust ${trust}/100, Bond ${bond}/100 | Shared ${joint} | Led ${lead}"
+        [[ "${sera_bk:-0}" -eq 1 ]] && echo "Sera BREAKTHROUGH READY (./play.sh ceremony)"
         echo "Chapter: ${chapter}"
         echo "Threat: ${threat}"
         echo "Last event: ${last_evt}"
@@ -82,6 +88,9 @@ handoff_write() {
         echo "| Bond | ${bond}/100 |"
         echo "| Shared moments | ${joint} |"
         echo "| Leadership moments | ${lead} |"
+        echo "| Level | ${sera_lvl:-1} |"
+        echo "| Road XP | ${sera_rxp:-0} / ${sera_rxmax:-10} |"
+        [[ "${sera_bk:-0}" -eq 1 ]] && echo "| Breakthrough | READY |"
         echo "| Mood | ${SERA_MOOD:-(unset)} |"
         echo ""
         echo "## World flags"

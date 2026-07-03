@@ -278,7 +278,10 @@ draw_main_hud_compact() {
     load_player 2>/dev/null || true
     load_sera 2>/dev/null || true
     load_sera_state 2>/dev/null || true
-    local t b t_bar b_bar
+    if declare -f prog_load_sera_progress >/dev/null 2>&1; then
+        prog_load_sera_progress
+    fi
+    local t b t_bar b_bar sera_lv="${SERA_PROG_LEVEL:-1}" sera_rxp="${SERA_ROAD_XP:-0}" sera_rxmax="${SERA_ROAD_XP_MAX:-10}"
     t=$(sera_clamp_meter "${SERA_TRUST:-35}" 2>/dev/null || echo "35")
     b=$(sera_clamp_meter "${SERA_BOND:-25}" 2>/dev/null || echo "25")
     t_bar=$(sera_meter_bar "$t" 2>/dev/null || echo "░░░░░░░░")
@@ -290,9 +293,12 @@ draw_main_hud_compact() {
     printf '%s│%s %-10s %-28s HP %2d/%-2d  Lv%-2s  %d🪙 %s│%s\n' \
         "$CYAN" "$RESET" "$loc_key" "${loc_name:0:28}" "${CUR_HP:-?}" "${MAX_HP:-?}" "$plvl" "${COINS:-0}" \
         "$CYAN" "$RESET"
-    printf '%s│%s Sera %2d/%-2d %s%s%s  T:%3d %s%s%s  B:%3d %s%s%s  %s│%s\n' \
-        "$CYAN" "$RESET" "${SERA_HP:-?}" "${SERA_MAX:-?}" "$AMBER" "$glyph" "$RESET" \
-        "$t" "$DIM" "$t_bar" "$RESET" "$b" "$DIM" "$b_bar" "$RESET" "$CYAN" "$RESET"
+    printf '%s│%s Sera %2d/%-2d Lv%-2s Rx%2d/%-2s %s%s%s T:%3d B:%3d %s│%s\n' \
+        "$CYAN" "$RESET" "${SERA_HP:-?}" "${SERA_MAX:-?}" "$sera_lv" "$sera_rxp" "$sera_rxmax" \
+        "$AMBER" "$glyph" "$RESET" "$t" "$b" "$CYAN" "$RESET"
+    [[ "${SERA_BREAKTHROUGH_PENDING:-0}" -eq 1 ]] && \
+        printf '%s│%s %s◆ Sera BREAKTHROUGH READY — run ceremony on ./play.sh start%s  %s│%s\n' \
+            "$CYAN" "$RESET" "$AMBER" "$RESET" "$CYAN" "$RESET"
     printf '%s│%s %s%s%s\n' "$CYAN" "$RESET" "$GRAY" "${chapter:-The road continues.}" "$RESET"
     printf '%s│%s ⚠ %s%s%s\n' "$CYAN" "$RESET" "$DIM" "${threat:0:62}" "$RESET"
     printf '%s└──────────────────────────────────────────────────────────────────┘%s\n' "$CYAN" "$RESET"

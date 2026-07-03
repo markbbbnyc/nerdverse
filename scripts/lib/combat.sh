@@ -192,7 +192,7 @@ function start_encounter() {
             echo "${enemy_name} crumples."
             log_narrative "Meyiu defeated a ${enemy_name} with mage fire and buckler discipline."
             db_exec "UPDATE characters SET road_xp = road_xp + 3 WHERE name='$player_name';"
-            db_exec "UPDATE characters SET road_xp = road_xp + 1 WHERE name='Sera Thornwake';"
+            db_exec "UPDATE characters SET road_xp = road_xp + 2 WHERE name='Sera Thornwake';"
             prog_practice "Meyiu" "tactics" 1
             prog_practice "Sera Thornwake" "medicine,tactics" 1
             if declare -f prog_sync_breakthrough >/dev/null 2>&1; then

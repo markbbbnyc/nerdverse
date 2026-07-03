@@ -39,25 +39,42 @@ show_character_sheets() {
     printf '%s%s%s\n' "$BOLD$YELLOW" "────────────────────────────────────────────────────────────────────" "$RESET"
     echo
 
-    local s_hp s_max s_notes
-    row=$(db_query_row "SELECT current_hp, max_hp, notes FROM characters WHERE name='Sera Thornwake' LIMIT 1;")
-    IFS=$'\t' read -r s_hp s_max s_notes <<< "$row"
+    local s_hp s_max s_notes s_lvl s_rxp s_rxmax s_bk
+    row=$(db_query_row "SELECT current_hp, max_hp, notes, prog_level, road_xp, road_xp_max, breakthrough_pending FROM characters WHERE name='Sera Thornwake' LIMIT 1;")
+    _old_ifs="$IFS"
+    IFS=$'\t'
+    read -r s_hp s_max s_notes s_lvl s_rxp s_rxmax s_bk <<< "$row" || true
+    IFS="$_old_ifs"
 
     printf '%sSERA THORNWAKE%s\n' "$BOLD" "$RESET"
     echo "────────────────────────────────────────────────────────────────────"
     printf "  TITLE     : Field-healer, trail archer, buckler fighter\n"
     printf "  CLASS     : Healer-Archer                  HP : %d / %d\n" "$s_hp" "$s_max"
+    printf "  ROAD XP   : %d / %-3d                LEVEL : %s" "${s_rxp:-0}" "${s_rxmax:-10}" "${s_lvl:-1}"
+    [[ "${s_bk:-0}" -eq 1 ]] && printf "  ◆ BREAKTHROUGH READY"
     echo
-    echo "  GEAR"
-    echo "    Trail Bow    Bow Shot: 3 damage"
-    echo "    Buckler      Buckler Guard: reduce damage to self or ally by 2 (once/round)"
+    echo
+    echo "  COMBAT TECHNIQUES (active slots)"
+    echo "SELECT CONCAT(\"    • \", ability_name, \" (Prof \", COALESCE(proficiency,0), \")  \", LEFT(description,36))
+          FROM character_abilities a JOIN characters c ON a.character_id=c.id
+          WHERE c.name=\"Sera Thornwake\" AND a.combat_active=1 ORDER BY a.combat_slot;" | $MARIADB --silent --skip-column-names
+    echo
+    echo "  UNLOCKS (components / passives / combos)"
+    echo "SELECT CONCAT(\"    • \", display_name, \" [\", unlock_type, \"]\")
+          FROM character_unlocks u JOIN characters c ON u.character_id=c.id
+          WHERE c.name=\"Sera Thornwake\" ORDER BY unlocked_at;" | $MARIADB --silent --skip-column-names
+    echo
+    echo "  PRACTICE (muscle memory)"
+    echo "SELECT CONCAT(\"    • \", practice_key, \": \", points)
+          FROM character_practice p JOIN characters c ON p.character_id=c.id
+          WHERE c.name=\"Sera Thornwake\" ORDER BY points DESC;" | $MARIADB --silent --skip-column-names
     echo
     echo "  ROLE"
-    echo "    Provisional trust. May join permanently if Brindleford survives."
+    echo "    Full protagonist track — same breakthrough mechanics as Meyiu."
     echo "    Sharp-tongued, practical, protective. Controls the medicine room."
     echo
     echo "  NOTES"
-    echo "    \"Medicine won't wait. Neither will I.\""
+    printf "    \"%s\"\n" "${s_notes:0:60}"
     echo
 
     printf '%s%s%s\n' "$BOLD$CYAN" "════════════════════════════════════════════════════════════════════" "$RESET"

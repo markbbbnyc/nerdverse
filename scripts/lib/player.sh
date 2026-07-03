@@ -82,6 +82,9 @@ show_status() {
     echo
     printf '  %sSera Thornwake%s  (HP %d/%d)  —  %s%s...%s\n' \
         "$AMBER" "$RESET" "$SERA_HP" "$SERA_MAX" "$GRAY" "${SERA_NOTES:0:70}" "$RESET"
+    if declare -f prog_show_sera_progress >/dev/null 2>&1; then
+        prog_show_sera_progress
+    fi
     echo
 
     local joint=${SERA_JOINT:-0} lead=${SERA_LEAD:-0}
