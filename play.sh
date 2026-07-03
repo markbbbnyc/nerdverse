@@ -65,7 +65,7 @@ if [[ -t 1 ]] && command -v tput >/dev/null 2>&1; then
     AMBER=$(tput setaf 3 2>/dev/null || printf '\033[33m')
     YELLOW=$( { tput bold; tput setaf 3; } 2>/dev/null || printf '\033[1;33m' )
     CYAN=$(tput setaf 6 2>/dev/null || printf '\033[36m')
-    GRAY=$(tput setaf 8 2>/dev/null || printf '\033[90m')
+    GRAY=$(printf '\033[38;5;250m')  # nice eyecandy mid-grey (much better contrast on macOS Terminal dark bg)
     WHITE=$(tput setaf 7 2>/dev/null || printf '\033[37m')
 else
     # Fallback using actual escape (for very old/minimal systems)
@@ -78,7 +78,7 @@ else
     AMBER="${_e}[33m"
     YELLOW="${_e}[1;33m"
     CYAN="${_e}[36m"
-    GRAY="${_e}[90m"
+    GRAY="${_e}[38;5;250m"  # nice eyecandy mid-grey (much better contrast on macOS Terminal dark bg)
     WHITE="${_e}[37m"
 fi
 
@@ -184,11 +184,19 @@ render_main() {
     show_ascii_forge
     echo
 
-    sera_says "Medicine room next. Unless you plan to treat stab wounds with personal growth."
+    if [[ "${LOCATION}" == *"Medicine"* ]]; then
+        sera_says "Here we are. The crate is still sealed. Let's see what's inside and what we can use."
+    else
+        sera_says "Medicine room next. Unless you plan to treat stab wounds with personal growth."
+    fi
 
     echo
     printf '%sWhat does Meyiu do?%s\n' "$BOLD$GREEN" "$RESET"
-    printf '  %s[1]%s Go to Sera'\''s medicine room (recommended)\n' "$GREEN" "$RESET"
+    if [[ "${LOCATION}" == *"Medicine"* ]]; then
+        printf '  %s[1]%s Inventory the recovered crate together\n' "$GREEN" "$RESET"
+    else
+        printf '  %s[1]%s Go to Sera'\''s medicine room (recommended)\n' "$GREEN" "$RESET"
+    fi
     printf '  %s[2]%s Check inventory\n' "$GREEN" "$RESET"
     printf '  %s[3]%s Talk to Sera more\n' "$GREEN" "$RESET"
     printf '  %s[4]%s Visit the Hearthmouse Inn\n' "$GREEN" "$RESET"
@@ -275,7 +283,7 @@ show_status() {
     # Visible "Sera is choosing" reward - core dopamine
     local joint=${SERA_JOINT:-0}
     local lead=${SERA_LEAD:-0}
-    printf '  %sSera\'s Bond with you:%s  Trust %s  |  Bond %s  |  Shared: %s | Sera led: %s\n' \
+    printf '  %sSera'\''s Bond with you:%s  Trust %s  |  Bond %s  |  Shared: %s | Sera led: %s\n' \
         "$GREEN" "$RESET" "${SERA_TRUST:-35}" "${SERA_BOND:-25}" "$joint" "$lead"
     echo
 
@@ -339,6 +347,13 @@ sera_says() {
 # Leadership ~70% Meyiu / 30% Sera. Wins and losses are lessons.
 # She will sometimes seek alignment elsewhere on specific topics (15%).
 # She decides on her own. Sometimes she leads. The bond grows through shared experience.
+#
+# Mechanics notes (slow burn):
+# - Base gains are small (+1 to +4).
+# - Pure repetition (same context twice) heavily reduces or zeros gains.
+# - "talk" only gives meaningful bond if it follows a real action (defend/joint/medicine).
+# - Actions (joint, defend, medicine together) are the main drivers.
+# - Words contextualize and amplify actions, but do not replace them.
 
 load_sera_state() {
     SERA_TRUST=$(db_query "SELECT value FROM world_state WHERE state_key='sera_trust_level';")
@@ -349,6 +364,8 @@ load_sera_state() {
     SERA_ROMANTIC=$(db_query "SELECT value FROM world_state WHERE state_key='sera_romantic_tension';")
     SERA_JOINT=$(db_query "SELECT value FROM world_state WHERE state_key='sera_joint_experiences';")
     SERA_LEAD=$(db_query "SELECT value FROM world_state WHERE state_key='sera_leadership_moments';")
+    SERA_LAST_ACTION=$(db_query "SELECT value FROM world_state WHERE state_key='sera_last_action';")
+    SERA_RECENT_EVENT=$(db_query "SELECT value FROM world_state WHERE state_key='sera_recent_event';")
 }
 
 sera_update_state() {
@@ -359,22 +376,34 @@ sera_update_state() {
 
 # Call this after meaningful shared actions or experiences.
 # This is one of the primary ways the bond grows.
+# Repetition is devalued unless context changed.
 sera_record_joint_experience() {
     load_sera_state
     local current=${SERA_JOINT:-0}
     local new=$(( current + 1 ))
-    sera_update_state "sera_joint_experiences" "$new"
+    db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_joint_experiences\", \"$new\") ON DUPLICATE KEY UPDATE value = \"$new\";"
 
-    # Walking the talk builds real trust and bond
-    local t=$(( ${SERA_TRUST:-35} + 2 ))
-    local b=$(( ${SERA_BOND:-25} + 3 ))
+    local gain_t=2
+    local gain_b=3
+
+    # Diminishing returns on pure repetition
+    if [[ "$SERA_LAST_ACTION" == *"joint"* || "$SERA_LAST_ACTION" == *"talk"* ]]; then
+        gain_t=1
+        gain_b=1
+    fi
+
+    local t=$(( ${SERA_TRUST:-35} + gain_t ))
+    local b=$(( ${SERA_BOND:-25} + gain_b ))
     [[ $t -gt 100 ]] && t=100
-    sera_update_state "sera_trust_level" "$t"
-    sera_update_state "sera_bond_level" "$b"
+    db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_trust_level\", \"$t\") ON DUPLICATE KEY UPDATE value = \"$t\";"
+    db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_bond_level\", \"$b\") ON DUPLICATE KEY UPDATE value = \"$b\";"
+
+    sera_update_state "sera_last_action" "joint"
 }
 
 # Sera exercises agency. She is choosing.
 # This should feel visible and rewarding to the player.
+# Gains are deliberately small and context-sensitive for a slow-burn arc.
 sera_exercise_agency() {
     load_sera_state
 
@@ -385,40 +414,89 @@ sera_exercise_agency() {
     local her_action=""
     local her_words=""
 
+    # Base small gains. Repetition and lack of context heavily penalize.
+    local is_repeat=0
+    if [[ -n "$SERA_LAST_ACTION" && "$choice_context" == *"$SERA_LAST_ACTION"* ]]; then
+        is_repeat=1
+    fi
+
     case "$choice_context" in
         *"defend"*|*"protect"*|*"measured"*|*"scouts"*)
-            if [[ "$SERA_TRUST" -gt 25 ]]; then
-                trust_change=6
-                bond_change=5
-                her_words="You meant it. Not just talk. I saw it in the orders — and in what you were willing to risk yourself."
-                her_action="Sera takes initiative (30% lead): \"I'll decide who among the villagers gets the first of the limited healing and set the fallback signal with the scouts. You focus on the Sheriff. We split the load.\""
-            fi
-            # Additional Sera-led moment for defense flow (30% side)
-            if [[ "$SERA_BOND" -ge 35 ]]; then
+            # Strong meaningful action
+            trust_change=3
+            bond_change=4
+            her_words="You meant it. Not just talk. I saw it in the orders — and in what you were willing to risk yourself."
+            her_action="Sera takes initiative (30% lead): \"I'll decide who among the villagers gets the first of the limited healing and set the fallback signal with the scouts. You focus on the Sheriff. We split the load.\""
+            if [[ "${SERA_BOND:-0}" -ge 35 ]]; then
                 her_action="$her_action She later quietly sets a simple watch rotation with two villagers based on her own judgment."
             fi
+            sera_update_state "sera_recent_event" "meaningful_action"
             ;;
         *"risk"*|*"heroic"*|*"noble"*|*"but"*)
-            trust_change=-7
+            trust_change=-4
             mood_shift="cutting"
             her_words="That was the kind of brave that gets good people killed. We don't have that luxury."
             ;;
         *"listened"*|*"saw me"*|*"didn't ask me to shrink"*)
-            bond_change=7
-            trust_change=4
-            her_words="You looked at me like I'm allowed to be exactly this sharp and still worth keeping around."
+            # Words after action are good. Pure spam is weak.
+            if [[ "$SERA_LAST_ACTION" == *"defend"* || "$SERA_LAST_ACTION" == *"joint"* || "$SERA_LAST_ACTION" == *"medicine"* ]]; then
+                bond_change=3
+                trust_change=2
+                her_words="You looked at me like I'm allowed to be exactly this sharp and still worth keeping around."
+            else
+                bond_change=1
+                trust_change=1
+                her_words="I heard you. Let's see it in what we do next."
+            fi
             if [[ "$SERA_ROMANTIC" == *"emerging"* ]]; then
                 her_action="She stays a little closer while you work. No big gesture — just presence that wasn't there before."
             fi
-            # Light external validation (15%): she found something from talking to someone else
-            if [[ "$SERA_BOND" -ge 30 ]]; then
-                her_action="$her_action She mentions quietly that Old Brenn gave her a small tip on the buckler straps that helped. It filled a small practical gap you couldn't."
+            if [[ "${SERA_BOND:-0}" -ge 30 ]]; then
+                her_action="$her_action She mentions quietly that Old Brenn gave her a small tip on the buckler straps that helped."
+            fi
+            ;;
+        *"follow"*|*"medicine"*|*"room"*)
+            trust_change=2
+            bond_change=3
+            her_words="Good. Let's get to work then. The sooner we know what's in this crate, the better."
+            her_action="Sera moves to the crate and starts carefully opening it, taking the lead on the inspection."
+            sera_update_state "sera_recent_event" "meaningful_action"
+            ;;
+        *"talk"*)
+            # Pure talk is weak unless it follows real action
+            if [[ "$SERA_RECENT_EVENT" == "meaningful_action" ]]; then
+                bond_change=3
+                trust_change=2
+                sera_update_state "sera_recent_event" ""
+                her_words="I heard you. That lands differently after what we just went through together."
+            elif [[ "$SERA_LAST_ACTION" == *"defend"* || "$SERA_LAST_ACTION" == *"joint"* || "$SERA_LAST_ACTION" == *"medicine"* ]]; then
+                bond_change=2
+                trust_change=1
+                her_words="I heard you. That means something after what we just did."
+            else
+                bond_change=0
+                trust_change=0
+                her_words="I hear you. Now let's show it with what we do."
             fi
             ;;
         *)
             her_words="We'll see what that actually costs."
             ;;
     esac
+
+    # Apply repetition penalty (slower burn) for most contexts
+    if [[ $is_repeat -eq 1 && "$choice_context" != *"defend"* ]]; then
+        trust_change=$(( trust_change / 2 ))
+        bond_change=$(( bond_change / 2 ))
+    fi
+    if [[ $trust_change -lt 1 && $bond_change -lt 1 && $is_repeat -eq 1 ]]; then
+        trust_change=0
+        bond_change=0
+        if [[ -z "$mood_shift" ]]; then
+            mood_shift="bored"
+            her_words="We've been over this. Let's do something that actually moves us."
+        fi
+    fi
 
     local new_trust=$(( ${SERA_TRUST:-35} + trust_change ))
     local new_bond=$(( ${SERA_BOND:-25} + bond_change ))
@@ -429,6 +507,16 @@ sera_exercise_agency() {
     sera_update_state "sera_bond_level" "$new_bond"
     [[ -n "$mood_shift" ]] && sera_update_state "sera_mood" "$mood_shift"
 
+    # Remember what we just did for future repetition/context checks
+    if [[ -n "$choice_context" ]]; then
+        sera_update_state "sera_last_action" "$choice_context"
+    fi
+
+    # Set recent_event for context-sensitive bonuses (e.g. talk after action)
+    if [[ "$choice_context" == *"defend"* || "$choice_context" == *"joint"* || "$choice_context" == *"medicine"* || "$choice_context" == *"follow"* ]]; then
+        sera_update_state "sera_recent_event" "meaningful_action"
+    fi
+
     if [[ -n "$her_words" ]]; then
         echo
         printf '%sSera:%s "%s"\n' "$YELLOW" "$RESET" "$her_words"
@@ -436,7 +524,7 @@ sera_exercise_agency() {
     fi
 
     # Make the "Sera chose this" feeling explicit after meaningful agency
-    if [[ $bond_change -gt 3 || $trust_change -gt 3 ]]; then
+    if [[ $bond_change -gt 1 || $trust_change -gt 1 ]]; then
         echo -e "${AMBER}Sera looks at you for a long moment, then nods once. \"Alright. We do this together.\"${RESET}"
         log_narrative "Sera explicitly chooses the journey with you."
     fi
@@ -444,9 +532,10 @@ sera_exercise_agency() {
     if [[ -n "$her_action" ]]; then
         echo -e "${GRAY}Sera moves on her own: ${her_action}${RESET}"
         log_narrative "Sera acted independently: ${her_action}"
-        # Track her 30% leadership
+        # Track her 30% leadership with upsert
         local lead=${SERA_LEAD:-0}
-        sera_update_state "sera_leadership_moments" $(( lead + 1 ))
+        local newlead=$(( lead + 1 ))
+        db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_leadership_moments\", \"$newlead\") ON DUPLICATE KEY UPDATE value = \"$newlead\";"
     fi
 
     if [[ $new_trust -lt 20 ]]; then
@@ -576,6 +665,14 @@ fi
 # Ensure schema + seed (idempotent)
 ./scripts/apply_migrations.sh >/dev/null 2>&1 || true
 
+# Ensure Sera agency keys exist
+db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_trust_level\", \"35\") ON DUPLICATE KEY UPDATE value=COALESCE(value, \"35\");"
+db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_bond_level\", \"25\") ON DUPLICATE KEY UPDATE value=COALESCE(value, \"25\");"
+db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_joint_experiences\", \"0\") ON DUPLICATE KEY UPDATE value=COALESCE(value, \"0\");"
+db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_leadership_moments\", \"0\") ON DUPLICATE KEY UPDATE value=COALESCE(value, \"0\");"
+db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_last_action\", \"\") ON DUPLICATE KEY UPDATE value=COALESCE(value, \"\");"
+db_exec "INSERT INTO world_state (state_key, value) VALUES (\"sera_recent_event\", \"\") ON DUPLICATE KEY UPDATE value=COALESCE(value, \"\");"
+
 # Initial push of main screen
 SCREEN_STACK=("main")
 
@@ -593,7 +690,8 @@ while true; do
                     db_exec "UPDATE world_state SET value = 'Arrived at medicine room to inventory the recovered crate.' WHERE state_key = 'last_major_event';"
                     log_narrative "Meyiu chose to follow Sera to the medicine room."
                     sera_record_joint_experience
-                    sera_exercise_agency "chose to follow her into the work instead of grand gestures"
+                    sera_exercise_agency "follow medicine room action"
+                    read -r -p "Press enter to continue in the medicine room..."
                     ;;
                 2|inventory)
                     push_screen "inventory"
@@ -602,8 +700,8 @@ while true; do
                     echo
                     sera_says "You bought practical gear instead of shiny magic. That counts for something."
                     sera_says "Do not wave the buckler around like a dinner plate. Keep it between your ribs and the thing trying to open them."
-                    sera_record_joint_experience
-                    sera_exercise_agency "actually listened and saw her as more than useful"
+                    # Pure talk - small effect unless it follows real action
+                    sera_exercise_agency "talk"
                     read -r -p "Press enter..."
                     ;;
                 4|inn)
@@ -616,6 +714,8 @@ while true; do
                     echo
                     sera_says "Sheriff Marn can wait five minutes. The medicine won't."
                     sera_record_joint_experience
+                    # Demo Sera agency with lead for testing
+                    sera_exercise_agency "defend the village with measured plan"
                     read -r -p "Press enter..."
                     ;;
                 6|buckler)
@@ -636,6 +736,7 @@ while true; do
                     ;;
                 9|sheet|sheets|char|chars|persona|personas)
                     push_screen "character_sheets"
+                    # Reviewing sheets together counts as a small joint action
                     sera_record_joint_experience
                     ;;
                 0|q|quit|exit|x)
