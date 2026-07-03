@@ -57,7 +57,8 @@ The game is designed to feel like a favorite never-ending series: ongoing charac
 - **Chapter:** *The Morning After the Toll*
 - **Where:** Hearthmouse Inn — dawn council done; **Pike hunt organizing** (dusk tomorrow)
 - **Meyiu:** Lv2, HP 13/13, Road XP 11/25, unlock: Field Mender's Habit
-- **Sera:** Lv2, Trust/Bond 100, mood `easy-with-you`, unlocks: Chill Residue, Field Lab Satchel
+- **Sera:** Lv2, Road XP 3/25, Trust/Bond 100, mood `easy-with-you`, unlocks: Chill Residue, Field Lab Satchel
+- **Sera progression UI:** HUD, status, persona records `[9]`, handoff — same visibility as Meyiu
 - **Combo discovered:** Thermal Shock (Frozen Ground + Firebolt)
 - **Village:** mill patched, food stabilizing, preparedness **High**, families evacuated then secured
 - **Black Bridge:** Toll-Saint wounded/retreated; Garran Pike withdrew — **hunt authorized before Meyiu/Sera depart the vale**
@@ -100,7 +101,8 @@ This is the living roadmap for building the "canvas" — the physics, systems, a
 - `play.sh` split into sourced modules under `scripts/lib/`.
 
 ### Milestone 2: Equipment & Ability System (Phase 1 — In Progress)
-- **Done:** `005_progression` migration; `scripts/lib/progression.sh`; combat ally cards; combo recipes; breakthrough ceremonies in `./play.sh`.
+- **Done:** `005_progression` migration; `scripts/lib/progression.sh`; combat ally cards; combo recipes; breakthrough ceremonies in `./play.sh` (runs for **both** Meyiu and Sera).
+- **Done:** Dual-track progression — Sera has her own `prog_level`, `road_xp`, `character_practice`, `character_unlocks`; shown on compact HUD (`Lv` / `Rx`), full status, `[9]` sheets, handoff.
 - Proper equipment slots (weapon, off-hand, armor, focus, accessory...).
 - Equipment modifiers that affect abilities and combat (e.g. staff boosts Firebolt damage).
 - Pull abilities dynamically from `character_abilities` table into combat.
@@ -171,6 +173,10 @@ We will continue to interleave "play" and "build" so the systems are validated t
 - Handoff + DM resume prompt; backup `nerdverse2_2026-07-03_session_end.sql`.
 
 **Resume:** Paste `saves/session_handoff.md` into Grok, or `./play.sh` for operator UI. Next beat: **Pike hunt**.
+
+### 2026-07-03 — Sera progression visibility
+
+Mechanics were already on Sera's `characters` row; UI was Meyiu-only. Fixed: compact HUD shows `Sera … Lv2 Rx 3/25`; persona records list her techniques, unlocks, practice; combat victory grants Sera **+2** Road XP.
 
 ### 2026-07-02 — Phase 0: The Forge Begins (Session 1)
 
@@ -289,26 +295,36 @@ Old (green screen, function-key navigation, push/pop screens) meets new (unicode
 
 ## Current Game State (Living Snapshot)
 
-> **Authoritative state is always the database.** Run `./play.sh` or query `characters` / `world_state`. This section describes the *arc*, not live numbers.
+> **Authoritative state is always the database.** Run `./play.sh` or query `characters` / `world_state`. Numbers below reflect **Life 2 (legacy)** as of last session pause.
 
-**Arc:** Phase 0 — Brindleford Forge after the medicine-cart ambush. Meyiu has practical gear (Ash-Wood Buckler, repair bundle). Sera urges the medicine room. Village defense against the Black Bridge Gang looms.
+**Arc:** *The Morning After the Toll* — Brindleford secured (mill patched, families safe, main push repelled). **Pike hunt** organizing at Hearthmouse Inn; Meyiu/Sera depart the vale after crushing Pike.
 
-**Fresh start:** Brindleford Forge (`location_key=forge`). **Resume:** loads from `saves/active_db` (e.g. legacy `nerdverse2` or `nerdverse3_Sera`).
+**Resume:** `saves/active_db` → usually `nerdverse2`; handoff in `saves/session_handoff.md`.
 
-**Time pressure:** Gang retaliation expected by dusk or midnight.
+### Meyiu (Life 2 pause)
 
-### Meyiu (template)
+| Field | Value |
+|-------|-------|
+| HP | 13 / 13 |
+| Level | 2 |
+| Road XP | 11 / 25 |
+| Location | Hearthmouse Inn (`inn`) |
 
-| Field | Typical start |
-|-------|----------------|
-| HP | 11 / 13 |
-| Coins | 4 silver |
-| Road XP | 5 / 10 |
-| Location | Cold Forge (Old Brenn) |
+### Sera Thornwake (companion — LLM-played, full progression track)
 
-### Sera Thornwake (companion — LLM-played)
+Sera is a full autonomous protagonist, not support. Trust/Bond are **0–100** meters. She uses the **same progression mechanics** as Meyiu on her own `characters` row:
 
-Sera is a full autonomous protagonist, not support. Trust/Bond are **0–100** meters (see mechanics in Continue Prompt above).
+| Field | Value (Life 2 pause) |
+|-------|----------------------|
+| Level | 2 |
+| Road XP | 3 / 25 |
+| Trust / Bond | 100 / 100 |
+| Practice (top) | medicine, science, tactics |
+| Unlocks | Chill Residue Vial, Field Lab Satchel |
+
+**Breakthrough ceremonies:** On `./play.sh` start (interactive TTY), if `breakthrough_pending=1` for either character, a level-up ceremony runs — Meyiu first, then Sera. Options are shaped by each character's practice tags.
+
+**Where to see Sera progression in-game:** compact HUD (`Sera … Lv Rx`), full status (non-compact), **[9] Persona records**, `saves/session_handoff.md` on quit.
 
 **Inner state keys** (`world_state`):
 - `sera_trust_level`, `sera_bond_level` (capped meters)
@@ -418,14 +434,32 @@ Gameplay always uses the `nerdverse` app user. `DB_NAME` in env is the default; 
 
 ---
 
+## Dual-track progression (Meyiu + Sera)
+
+Both protagonists progress on **separate tracks** in the same database:
+
+| Layer | Meyiu | Sera |
+|-------|-------|------|
+| **Breakthrough** | `prog_level`, `road_xp` / `road_xp_max`, `breakthrough_pending` | Same columns on her `characters` row |
+| **Practice** | `character_practice` (strength, arcane, practical, …) | Own practice rows (medicine, science, tactics, …) |
+| **Unlocks** | `character_unlocks` (passives, components, combos) | Own unlocks (e.g. Chill Residue, Field Lab Satchel) |
+| **Combat** | Up to 3 `combat_active` abilities | Frozen Ground, Triage Mark; ally card each round |
+| **Combos** | Party discoveries in `party_combos_discovered` | Primer abilities often Sera's (Thermal Shock) |
+
+**Road XP sources (examples):** combat victory (Meyiu +3, Sera +2), mill repair (+3 Sera), shared scenarios. Threshold crossed → `breakthrough_pending`; ceremony consumes bar and raises `road_xp_max` (10 → 25 → 45 …).
+
+**Design:** 2–3 combat menu options max; many inert components combine into surprises; level-ups add complexity, not raw stat inflation. Player should be **in the room** for Sera's milestones (DM play).
+
+---
+
 ## Technical Architecture (Current)
 
-- **State:** MariaDB per life (`nerdverse2`, `nerdverse3_Sera`, …). Tables: `characters`, `inventory`, `world_state`, `locations`, `maps`, `character_abilities`, `session_log`.
-- **play.sh:** thin loop; logic in `scripts/lib/` (`ui`, `travel`, `player`, `sera`, `combat`, `maps`, `sheets`, `render`).
+- **State:** MariaDB per life (`nerdverse2`, `nerdverse3_Sera`, …). Tables: `characters`, `inventory`, `world_state`, `locations`, `maps`, `character_abilities`, `character_practice`, `character_unlocks`, `combo_recipes`, `party_combos_discovered`, `session_log`.
+- **play.sh:** thin loop; logic in `scripts/lib/` (`ui`, `travel`, `player`, `sera`, `progression`, `combat`, `scenarios`, `maps`, `sheets`, `render`, `handoff`).
 - **Movement:** `characters.location_key` ↔ `locations.key_name`; exits from `connected_to`; [1] Travel, [4] local action.
-- **UI:** push/pop screens, green phosphor, [7] world map, [8] local map, [9] sheets.
-- **Sera:** trust/bond 0–100 in DB; voice/agency via LLM play sessions; mechanics reward real shared action.
-- **Migrations:** `sql/migrations/*.sql` + `schema_migrations`; maps loaded from `maps/*.txt` each run.
+- **UI:** AS/400 operator console; compact mode when terminal ≤30 rows (`NERDVERSE_COMPACT=0` for full layout).
+- **Sera:** trust/bond 0–100; full progression track; voice/agency via LLM/DM sessions.
+- **Migrations:** `sql/migrations/*.sql` + `schema_migrations`; catalog seeds `001_catalog.sql`, `003_progression_catalog.sql`.
 - Bash + MariaDB only.
 
 ---

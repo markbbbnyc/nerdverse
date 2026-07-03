@@ -53,7 +53,7 @@ docs/nerdverse-companion.md   # Diary, runbook, lore, roadmap
 
 **Phase 0 — The First Forge**
 
-Brindleford Vale: forge, medicine room, inn, sheriff, mill, bridge — connected via the `locations` table. Travel **[1]**, local action **[4]**. AS/400 operator UI (compact on short terminals: auto ≤30 rows, or `NERDVERSE_COMPACT=1`). Progression: practice tags, rare breakthrough levels, 2–3 combat actives, party combos. Sera trust/bond 0–100; DM + terminal play supported via `saves/session_handoff.md`.
+Brindleford Vale: forge, medicine room, inn, sheriff, mill, bridge — connected via the `locations` table. Travel **[1]**, local action **[4]**. AS/400 operator UI (compact on short terminals: auto ≤30 rows, or `NERDVERSE_COMPACT=1`). **Dual-track progression:** Meyiu and Sera each have level, Road XP, practice, unlocks, and breakthrough ceremonies (shown on HUD, status, **[9]** persona records). Party combos, 2–3 combat actives. Sera trust/bond 0–100; DM + terminal play via `saves/session_handoff.md`.
 
 Full living state, diary, and roadmap: **`docs/nerdverse-companion.md`**
 
