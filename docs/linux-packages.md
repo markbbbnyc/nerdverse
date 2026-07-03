@@ -202,15 +202,18 @@ See `README.md` and `docs/nerdverse-companion.md` (Runbook section) for full det
 
 ## 5. Full "Fresh Linux Box" Checklist
 
-1. `sudo apt update && sudo apt upgrade -y` (or equivalent)
-2. Install core packages from section 1
-3. (Optional) Install LaTeX + pandoc from section 2
-4. Install MariaDB server if desired + create user + database
-5. `git clone https://github.com/markbbbnyc/nerdverse.git`
-6. `cd nerdverse`
-7. `cp nerdverse.env.example nerdverse.env` (edit if needed)
-8. `./bootstrap.sh`
-9. `./play.sh`
+1. Install OS packages from the sections above.
+2. `git clone https://github.com/markbbbnyc/nerdverse.git`
+3. `cd nerdverse`
+4. `cp nerdverse.env.example nerdverse.env`
+5. Edit `nerdverse.env`:
+   - `DB_USER=nerdverse` (the dedicated game app user — do not change this lightly)
+   - Optionally set `DB_SETUP_USER` and `DB_SETUP_PASS` to a privileged account (your normal DB user or root) for the first bootstrap.
+6. `./bootstrap.sh`  
+   (This creates the `nerdverse2` database + the dedicated `nerdverse` MariaDB user and grants it the necessary privileges.)
+7. `./play.sh`
+
+The bootstrap will handle creating and privileging the dedicated game user. After the first successful bootstrap you can usually remove or comment out the `DB_SETUP_*` lines.
 
 ---
 

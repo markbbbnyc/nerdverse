@@ -177,12 +177,23 @@ Problems:
 
 ## Runbook: Bootstrap & Migration
 
+### Identity & Access Management (Dedicated Game User)
+
+Nerdverse uses a **dedicated database user** called `nerdverse` (configurable) for all gameplay and script operations.
+
+- The shell scripts you run as your normal local user (`mark`, `mary`, etc.) connect to MariaDB **as the `nerdverse` app user**.
+- This app user is granted the necessary privileges on the `nerdverse2` database.
+- During initial bootstrap you may use a privileged account (your personal MariaDB user or `root`) to create the database and the `nerdverse` user + grants.
+- This design makes the game portable and secure across different local accounts and machines.
+
+After the first `./bootstrap.sh` the `nerdverse` user owns the effective access. You can tighten or adjust grants later.
+
 ### Requirements (Linux or macOS)
 
 - MariaDB client (`mariadb` or `mysql` command)
 - Bash (4+ recommended)
 - Git (for cloning the repo)
-- A MariaDB user that can create the `nerdverse2` database and tables
+- A privileged MariaDB account (for first-time setup) that can `CREATE USER` and `GRANT`
 
 ### Idempotent Bootstrap
 
@@ -201,21 +212,29 @@ And later:
 ./bootstrap.sh   # safe to re-run
 ```
 
-**Before first run on a new Linux box**, see `docs/linux-packages.md` for the exact package list (mariadb-client, git, optional LaTeX for docs, etc.).
+**Before first run on a new Linux box**, see `docs/linux-packages.md` (or run `./install-deps.sh`) for packages.
+
+The bootstrap now automatically creates the dedicated `nerdverse` database user and grants it the necessary privileges on `nerdverse2`.
 
 ### First-Time Setup on a New Machine
 
-1. Install MariaDB server + client.
-2. Create the database user (example):
-
-   ```sql
-   CREATE USER 'mark'@'localhost' IDENTIFIED BY 'yourpassword';
-   GRANT ALL ON nerdverse2.* TO 'mark'@'localhost';
-   FLUSH PRIVILEGES;
+1. Install the required packages (see `docs/linux-packages.md` and `install-deps.sh --install`).
+2. Clone the repo and copy the example config:
+   ```bash
+   cp nerdverse.env.example nerdverse.env
    ```
-
-3. (Optional but recommended) Create a `nerdverse.env` file (see template).
+3. Edit `nerdverse.env`:
+   - `DB_USER=nerdverse` (the dedicated game user)
+   - Optionally set `DB_SETUP_USER` + `DB_SETUP_PASS` to a privileged account you control (e.g. your normal DB user or root). This is only used during bootstrap.
 4. Run `./bootstrap.sh`
+
+The bootstrap will:
+- Create the `nerdverse2` database (if needed)
+- Create the dedicated `nerdverse` MariaDB user
+- Grant it the required privileges
+- Run migrations and seed the initial world state
+
+After the first successful bootstrap you can usually remove the `DB_SETUP_*` lines from `nerdverse.env`. The game will then always run as the limited `nerdverse` app user.
 
 ### Configuration
 

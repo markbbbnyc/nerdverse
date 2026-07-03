@@ -24,7 +24,7 @@ cd nerdverse
 ./play.sh
 ```
 
-The bootstrap is **idempotent**. You can run it again safely.
+The bootstrap is **idempotent**. It also creates a dedicated low-privilege MariaDB user (`nerdverse` by default) so the game runs with proper separation from your personal database account. You can run it again safely.
 
 ## Project Structure
 

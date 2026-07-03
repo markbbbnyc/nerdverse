@@ -40,36 +40,38 @@ echo "for the recommended package list (mariadb-client, git, LaTeX, etc.)."
 # 2. Create nerdverse.env if it doesn't exist
 if [[ ! -f nerdverse.env ]]; then
     echo
-    echo "Creating nerdverse.env (edit this on new systems)..."
+    echo "Creating nerdverse.env with dedicated game app user..."
     cat > nerdverse.env << 'EOC'
 # nerdverse.env - local configuration (git-ignored)
-DB_USER=mark
+DB_USER=nerdverse
 DB_NAME=nerdverse2
 DB_HOST=localhost
 
-# If you use password auth instead of socket / .my.cnf, set:
-# DB_PASS=yourpassword
+# Leave empty for socket/.my.cnf auth (recommended for local dev)
+# DB_PASS=
+
+# Privileged account used only during bootstrap (your personal user or root)
+# DB_SETUP_USER=root
+# DB_SETUP_PASS=
 EOC
-    echo "  Created nerdverse.env — review and edit if needed."
+    echo "  Created nerdverse.env — review and edit DB_SETUP_USER if needed."
 fi
 
 # 3. Source helpers
 source scripts/db.sh
 
 echo
-echo "Checking database connectivity..."
+echo "Setting up dedicated database user and privileges (using privileged account if needed)..."
+db_ensure_database_and_user
+
+echo
+echo "Checking runtime connectivity as the game app user (${DB_USER})..."
 if ! db_check; then
     echo
-    echo "We will try to help create the database and user."
-    db_ensure_database || {
-        echo "Manual steps:"
-        echo "  1. mariadb -u root"
-        echo "  2. CREATE DATABASE IF NOT EXISTS nerdverse2;"
-        echo "  3. CREATE USER 'mark'@'localhost' IDENTIFIED BY 'yourpass';"
-        echo "  4. GRANT ALL ON nerdverse2.* TO 'mark'@'localhost';"
-        echo "  5. Re-run this bootstrap."
-        exit 1
-    }
+    echo "Runtime connection as '${DB_USER}' failed."
+    echo "Check your nerdverse.env and that the privileged setup succeeded."
+    echo "You may need to set DB_SETUP_USER and DB_SETUP_PASS temporarily."
+    exit 1
 fi
 
 # 4. Run all migrations + seeds (the real work)

@@ -279,20 +279,26 @@ And later:
 ./bootstrap.sh   # safe to re-run
 \end{lstlisting}
 
-\textbf{Before the first run on a new Linux box}, consult \texttt{docs/linux-packages.md} for the full distro-specific package list (mariadb-client, git, optional TeX packages for PDF generation of this document, etc.).
+\textbf{Before the first run on a new Linux box}, consult \texttt{docs/linux-packages.md}.
+
+The bootstrap now creates the dedicated game user \texttt{nerdverse} and grants it the necessary database privileges.
 
 \subsection{First-Time Setup on a New Machine}
 
 \begin{enumerate}
-  \item Install MariaDB server + client.
-  \item Create the database user (example):
-    \begin{lstlisting}[language=sql]
-CREATE USER 'mark'@'localhost' IDENTIFIED BY 'yourpassword';
-GRANT ALL ON nerdverse2.* TO 'mark'@'localhost';
-FLUSH PRIVILEGES;
+  \item Install required packages (see \texttt{docs/linux-packages.md}).
+  \item Copy the example configuration:
+    \begin{lstlisting}[language=bash]
+cp nerdverse.env.example nerdverse.env
     \end{lstlisting}
-  \item (Optional but recommended) Create a \texttt{nerdverse.env} file (see template below).
+  \item Edit \texttt{nerdverse.env}:
+    \begin{itemize}
+      \item \texttt{DB\_USER=nerdverse} (the dedicated game app user)
+      \item Optionally set \texttt{DB\_SETUP\_USER} / \texttt{DB\_SETUP\_PASS} to a privileged account for the initial bootstrap only.
+    \end{itemize}
   \item Run \texttt{./bootstrap.sh}
+
+  The bootstrap creates the database, the dedicated \texttt{nerdverse} user, grants it privileges, and seeds the game.
 \end{enumerate}
 
 \subsection{Configuration}

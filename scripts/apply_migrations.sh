@@ -17,7 +17,9 @@ echo "=== Nerdverse Migration Runner ==="
 echo "Database: ${DB_NAME}  User: ${DB_USER}"
 
 db_check || exit 1
-db_ensure_database || exit 1
+
+# The database + dedicated user are ensured by bootstrap.sh.
+# We just make sure the schema_migrations table exists.
 
 # Ensure migrations table exists (it is created by 001)
 $MARIADB -e "CREATE TABLE IF NOT EXISTS schema_migrations (
