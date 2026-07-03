@@ -135,7 +135,7 @@ This is the living roadmap for building the "canvas" — the physics, systems, a
 
 **Current Focus**: Milestone 2 (Equipment + Ability System) while keeping the current life sacred and testing mechanics in context.
 
-**Recent Polish (Combat UI)**: Combat avatars now use larger bordered game-card tiles with generous internal padding so ASCII art and minimal stats (HP bars) have breathing room and are not "boxed in". Clear PLAYER/ENEMY labels and visual separation for better eye guidance on the combat screen. Updated in draw_ascii_combatants().
+**Recent Polish (Combat UI)**: Combat avatars are now bordered game-card tiles with larger width (20-char inner) and extra internal padding/empty lines so the ASCII art and minimal HP stats (bar + numbers) are not "boxed in". PLAYER and ENEMY labels above, consistent borders for visual guidance and reduced eye strain. Fixed HP line padding for alignment. Updated in draw_ascii_combatants().
 
 We will continue to interleave "play" and "build" so the systems are validated through actual use.
 

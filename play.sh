@@ -669,7 +669,7 @@ function draw_ascii_combatants() {
     echo -e "  ${GREEN}║        ||||        ║${RESET}          ${RED}║        /   \\       ║${RESET}"
     echo -e "  ${GREEN}║                    ║${RESET}          ${RED}║                    ║${RESET}"
     # Stats inside the border with padding
-    printf "  ${GREEN}║   HP: %s%s %2d/%-2d   ║${RESET}          ${RED}║   HP: %s%s %2d/%-2d   ║${RESET}\n" \
+    printf "  ${GREEN}║ HP: %s%s %2d/%-2d ║${RESET}          ${RED}║ HP: %s%s %2d/%-2d ║${RESET}\n" \
         "$pbar" "$pfill" "$player_hp" "$player_max" "$ebar" "$efill" "$enemy_hp" "$enemy_max"
     echo -e "  ${GREEN}╚════════════════════╝${RESET}          ${RED}╚════════════════════╝${RESET}"
     echo
