@@ -1,0 +1,316 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages for a readable, long-term companion document
+\usepackage[margin=1in]{geometry}
+\usepackage{titlesec}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{tcolorbox}
+\usepackage{fontawesome5}  % nice icons if available, fallback ok
+
+\definecolor{nerdgreen}{RGB}{46, 125, 50}
+\definecolor{ashgray}{RGB}{80, 80, 80}
+\definecolor{storybg}{RGB}{245, 240, 230}
+
+\tcbuselibrary{skins,breakable}
+
+\titleformat{\section}{\Large\bfseries\color{nerdgreen}}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{ashgray}}{\thesubsection}{1em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small The Nerdverse Companion}
+\fancyhead[R]{\small Meyiu -- The Sinner Who Still Chooses}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!10},
+  keywordstyle=\color{nerdgreen},
+  commentstyle=\color{ashgray}
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+\title{\textbf{The Nerdverse Companion}\\[0.3em]
+\large Meyiu -- The Sinner Who Still Chooses \\[0.5em]
+\normalsize A Living Diary, Runbook \& Game Documentation}
+\author{Mark \& Grok (co-crafters)}
+\date{Started: 2026-07-02 \\ Version: Phase 0 -- The First Forge}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introduction \& Intent}
+
+This document is the living heart of the \textbf{Nerdverse} project.
+
+It serves three purposes at once:
+\begin{itemize}
+  \item A \textbf{diary} of our shared play and creation sessions.
+  \item A \textbf{runbook} with idempotent bootstrap and migration instructions so the game can be installed on any Linux system (or future Mac) with MariaDB.
+  \item A \textbf{game documentation} that remains enjoyable to read years later — for you, or for others if the game ever becomes public.
+\end{itemize}
+
+The design philosophy (stolen shamelessly from the game's own themes):
+\begin{itemize}
+  \item \textit{You are unfinished, not erased.}
+  \item \textit{Context before category.}
+  \item \textit{Repair must become practical.}
+\end{itemize}
+
+We are building a pure \textbf{bash + MariaDB} text adventure / solo RPG engine. No Python, no Node, no fancy frameworks. The goal is maximum portability and learnability.
+
+\section{Development Diary}
+
+\subsection{2026-07-02 -- Phase 0: The Forge Begins (Session 1)}
+
+\textbf{In-Game Situation at Start}\\
+Meyiu stands at Brindleford Forge after purchasing the Ash-Wood Buckler (crafted from captured bandit materials) and a Repair and Supply Bundle. Coins: 4 silver. HP 11/13. Road XP 5/10. Sera Thornwake is with him, provisionally trusting after the road ambush where the medicine crate was saved.
+
+Sera's suggestion: ``Medicine room next. Unless you plan to treat stab wounds with personal growth.''
+
+\textbf{What We Built Today}
+\begin{itemize}
+  \item Initialized git repository for full GitHub portability.
+  \item Created clean project skeleton: \texttt{sql/}, \texttt{scripts/}, \texttt{docs/}, \texttt{bin/}, \texttt{saves/}, \texttt{logs/}.
+  \item Created this \LaTeX\ companion document.
+  \item Designed initial idempotent MariaDB schema focused on characters, inventory, world state, and session logging.
+  \item Wrote the first migration and seed that exactly reproduces the restart packet state.
+  \item Created the foundation for a pure-bash CLI that loads state from the database.
+  \item Began the bootstrap/install scripts (idempotent by design).
+\end{itemize}
+
+\textbf{Technical Decisions Made}
+\begin{itemize}
+  \item Pure bash + \texttt{mariadb} client only. Scripts must run on minimal Linux installs.
+  \item Configuration via environment variables + optional \texttt{nerdverse.env} file.
+  \item Migrations are numbered and tracked in a \texttt{schema\_migrations} table.
+  \item All SQL is written to be re-runnable safely (\texttt{CREATE ... IF NOT EXISTS}, \texttt{INSERT ... ON DUPLICATE KEY UPDATE} or \texttt{INSERT IGNORE}).
+  \item Narrative will live in this document + in-game session\_log table.
+\end{itemize}
+
+\textbf{Open Questions / Next Priorities}
+\begin{itemize}
+  \item Complete minimal \texttt{play.sh} status + basic menu loop.
+  \item First real play scene in Sera's medicine room.
+  \item Decide on simple ASCII art strategy (static blocks vs printf art).
+  \item Document how to grant the ``mark'' (or chosen) DB user on a fresh Linux box.
+\end{itemize}
+
+\subsubsection{2026-07-02 -- Bootstrap \& First Engine Run}
+
+The foundation scripts are now real and tested:
+
+\begin{itemize}
+  \item \texttt{bootstrap.sh} creates \texttt{nerdverse.env}, ensures DB access, and delegates to the migration runner.
+  \item \texttt{scripts/apply\_migrations.sh} is fully idempotent. It applies \texttt{sql/migrations/*.sql} in order and records them in \texttt{schema\_migrations}. Seeds are re-runnable.
+  \item \texttt{scripts/db.sh} centralizes connection logic and helpers.
+  \item \texttt{play.sh} (Phase 0) loads live state from the database, prints a nice status block, shows crude ASCII, and lets you pick basic actions. It already updates the DB for some choices.
+  \item Full initial world (Meyiu + Sera stats, inventory with correct equipped flags, passives, Brindleford locations, world\_state flags) was seeded exactly from the restart packet.
+\end{itemize}
+
+\textit{Ran successfully on the original machine. The state in nerdverse2 matches the PDF save point.}
+
+We are now ready to step into the medicine room together.
+
+\section{Current Game State (Living Snapshot)}
+
+This section will be updated after each play session. It is both narrative and mechanical.
+
+\begin{tcolorbox}[colback=storybg, colframe=nerdgreen, title=Current Save Point]
+\textbf{Location:} Brindleford Forge (just leaving after purchase)\\
+\textbf{Immediate Context:} Sera is urging Meyiu toward her medicine room to inventory the recovered medicine crate and resupply before the Black Bridge Gang can react.\\
+\textbf{Time Pressure:} The gang expected the thieves back. Retaliation possible by dusk or midnight.
+\end{tcolorbox}
+
+\subsubsection*{Meyiu -- The Sinner Who Still Chooses}
+
+\begin{longtable}{ll}
+\toprule
+\textbf{Field} & \textbf{Value} \\
+\midrule
+\endhead
+Name & Meyiu \\
+Full Title & The Sinner Who Still Chooses \\
+Expanded & And Chooses What Is His To Carry \\
+& Beloved, Responsible, Unfinished, Still Becoming \\
+& Pilgrim of the Unfinished \\
+Class & Mage \\
+Level / Milestone & 2 \\
+Current HP & 11 / 13 \\
+Coins & 4 silver \\
+Road XP & 5 / 10 \\
+Main Attack & Firebolt (6 damage) \\
+Improved & Zen-Mage Firebolt (6 + overkill heal +1) \\
+Location & Brindleford Forge \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Equipped \& Key Boons}
+
+\begin{itemize}
+  \item Ashen Prayer Bead (+1 Focus on calm magical/spiritual actions)
+  \item Penitent's Wrap (once per battle, reduce incoming damage by 2)
+  \item Ash-Wood Buckler (Passive Guard: reduce first physical hit by 1; Breathguard: reduce one hit by 3 +1 Focus)
+\end{itemize}
+
+\subsubsection*{Inventory (Key Items)}
+
+\begin{itemize}
+  \item Healing Potion (restores 6 HP)
+  \item Leechheart Pearl (4 HP or ritual)
+  \item Dull Copper Token (regret transformed)
+  \item Blackened Iron Key (symbolic)
+  \item Cinder Nameplate (``MEYIU -- THE SINNER WHO STILL CHOOSES'')
+  \item Black Brazier-Glass Shard (shame mirror)
+  \item Gray-Blue Question Slip (``How can I make you feel less alone?'')
+  \item White Quill Splinter (amend written curses)
+  \item Road Knife
+  \item Black Bridge-Token (evidence)
+  \item Repair and Supply Bundle (recently acquired)
+\end{itemize}
+
+\subsubsection*{Sera Thornwake (Companion Prospect)}
+
+\begin{longtable}{ll}
+\toprule
+\textbf{Field} & \textbf{Value} \\
+\midrule
+\endhead
+HP & 14 / 14 \\
+Role & Field-healer, trail archer, buckler fighter \\
+Status & With Meyiu in Brindleford, provisional trust \\
+Not yet & Permanently recruited \\
+\bottomrule
+\end{longtable}
+
+Her abilities (known):
+\begin{itemize}
+  \item Bow Shot -- 3 damage
+  \item Buckler Guard -- reduce damage to self or ally by 2 (once per round)
+  \item Healer's Rebuke -- heal 4 HP and deliver an insult (once)
+\end{itemize}
+
+\subsubsection*{The Black Bridge Gang (Current Threat)}
+
+Leader: Garran Pike (Bridge-Mouth). Champion: Toll-Saint (heavy shieldman). Strength: 9--12 fighters. Base: abandoned tollhouse. They want leverage over Brindleford. Medicine theft was ordered.
+
+\section{World \& Lore Notes}
+
+\subsection{Brindleford (Current Chapter: The Road of Bread and Iron)}
+
+A rain-soaked village near an old iron bridge. Problems:
+\begin{itemize}
+  \item Medicine shortages + cough-fever
+  \item Weak defenses
+  \item Black Bridge Gang controlling the bridge
+  \item Slow/possibly sabotaged Old Mill
+  \item Injured smith (Old Brenn)
+\end{itemize}
+
+Key locations (initial map):
+\begin{verbatim}
+[ Inn (Hearthmouse) ]     [ Forge (Cold Forge / Old Brenn) ]
+           \                     /
+            \                   /
+[ Well ] -- [ Sheriff Marn ] -- [ Medicine Room (Sera) ]
+           /
+[ Road to Old Mill ]
+           |
+[ Iron Bridge / Gang Tollhouse ]
+\end{verbatim}
+
+\section{Runbook: Bootstrap \& Migration}
+
+\subsection{Requirements (Linux or macOS)}
+
+\begin{itemize}
+  \item MariaDB client (\texttt{mariadb} or \texttt{mysql} command)
+  \item Bash (4+ recommended)
+  \item Git (for cloning the repo)
+  \item A MariaDB user that can create the \texttt{nerdverse2} database and tables
+\end{itemize}
+
+\subsection{Idempotent Bootstrap}
+
+The goal: on a fresh system you should be able to:
+
+\begin{lstlisting}[language=bash]
+git clone <repo>
+cd nerdverse
+./bootstrap.sh
+./play.sh
+\end{lstlisting}
+
+And later:
+
+\begin{lstlisting}[language=bash]
+./bootstrap.sh   # safe to re-run
+\end{lstlisting}
+
+\subsection{First-Time Setup on a New Machine}
+
+\begin{enumerate}
+  \item Install MariaDB server + client.
+  \item Create the database user (example):
+    \begin{lstlisting}[language=sql]
+CREATE USER 'mark'@'localhost' IDENTIFIED BY 'yourpassword';
+GRANT ALL ON nerdverse2.* TO 'mark'@'localhost';
+FLUSH PRIVILEGES;
+    \end{lstlisting}
+  \item (Optional but recommended) Create a \texttt{nerdverse.env} file (see template below).
+  \item Run \texttt{./bootstrap.sh}
+\end{enumerate}
+
+\subsection{Configuration}
+
+Create \texttt{nerdverse.env} (git-ignored):
+
+\begin{lstlisting}[language=bash]
+DB_USER=mark
+DB_NAME=nerdverse2
+DB_HOST=localhost
+# Optional: DB_PASS=... (prefer socket auth or .my.cnf)
+EOF
+\end{lstlisting}
+
+The scripts will source this if present.
+
+\section{Technical Architecture (Current)}
+
+\begin{itemize}
+  \item All state lives in MariaDB \texttt{nerdverse2}.
+  \item Bash scripts only for the engine and UI.
+  \item Migrations are plain \texttt{.sql} files applied in lexical order.
+  \item A \texttt{schema\_migrations} table prevents re-application.
+  \item Session log is append-only for narrative + debugging.
+  \item Future: simple command dispatch in bash using \texttt{case} + functions.
+\end{itemize}
+
+\section{Session Log}
+
+\subsection{2026-07-02 -- First Forge Session}
+
+(Will be expanded during actual play. Initial scaffolding complete. We are standing at the forge door with Sera.)
+
+\vspace{1em}
+\textit{``Loaded save: Meyiu is at Brindleford Forge after buying the Ash-Wood Buckler and Repair and Supply Bundle. Sera is urging him toward her medicine room...''}
+
+\section{Appendix: Original Restart Packet Summary}
+
+(The full 20-page PDF \texttt{Nerdverse\_2.pdf} is kept in the project root for reference. Key mechanical and narrative elements have been transcribed into the schema seed and this document.)
+
+\end{document}

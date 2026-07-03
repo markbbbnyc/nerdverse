@@ -1,0 +1,10 @@
+# Nerdverse ignores
+saves/*.bak
+logs/*.log
+*.swp
+.DS_Store
+nerdverse-companion.pdf
+nerdverse-companion.aux
+nerdverse-companion.log
+nerdverse-companion.out
+nerdverse-companion.toc
