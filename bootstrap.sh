@@ -33,6 +33,10 @@ fi
 
 echo "MariaDB client found: $(mariadb --version 2>/dev/null || mysql --version)"
 
+echo
+echo "If you are on a fresh Linux system, see docs/linux-packages.md"
+echo "for the recommended package list (mariadb-client, git, LaTeX, etc.)."
+
 # 2. Create nerdverse.env if it doesn't exist
 if [[ ! -f nerdverse.env ]]; then
     echo

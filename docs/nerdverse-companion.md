@@ -201,6 +201,8 @@ And later:
 ./bootstrap.sh   # safe to re-run
 ```
 
+**Before first run on a new Linux box**, see `docs/linux-packages.md` for the exact package list (mariadb-client, git, optional LaTeX for docs, etc.).
+
 ### First-Time Setup on a New Machine
 
 1. Install MariaDB server + client.

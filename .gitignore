@@ -3,8 +3,16 @@ saves/*.bak
 logs/*.log
 *.swp
 .DS_Store
+
+# Local config (never commit credentials or machine-specific settings)
+nerdverse.env
+*.env
+!nerdverse.env.example
+
+# Generated documentation artifacts
 nerdverse-companion.pdf
 nerdverse-companion.aux
 nerdverse-companion.log
 nerdverse-companion.out
 nerdverse-companion.toc
+nerdverse-companion.html.bak

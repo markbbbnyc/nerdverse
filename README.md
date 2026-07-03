@@ -30,11 +30,12 @@ The bootstrap is **idempotent**. You can run it again safely.
 
 - `bootstrap.sh` — one-command setup for new systems
 - `play.sh` — the game
+- `install-deps.sh` or see `docs/linux-packages.md` — target Linux package list
 - `scripts/` — db helpers, migration runner
 - `sql/migrations/` — numbered, re-runnable schema
 - `sql/seeds/` — initial world + character state
-- `docs/nerdverse-companion.tex` — the living diary + runbook + game documentation
-- `nerdverse.env` — local DB config (git-ignored)
+- `docs/` — companion docs (.md is the easy daily read, .tex for PDF, build-docs.sh)
+- `nerdverse.env` — local DB config (**never committed** — use `nerdverse.env.example`)
 
 ## Current Phase
 
@@ -71,6 +72,29 @@ The main living documentation lives in `docs/`:
 **Recommendation:** Use the `.md` file day-to-day. Run `./docs/build-docs.sh` after significant updates.
 
 The LaTeX and Markdown versions are kept in sync manually for now.
+
+## Target Linux Systems — Package Requirements
+
+See **`docs/linux-packages.md`** for the complete, maintained list of packages for Debian/Ubuntu, Fedora, Arch, openSUSE, etc.
+
+It covers:
+- MariaDB client (required to play)
+- Git & basic shell tools
+- LaTeX (optional — for building nice PDFs of the companion docs)
+- Pandoc (optional — better HTML)
+- Nice-to-haves (dialog, figlet, etc.)
+
+Quick Ubuntu example:
+
+```bash
+sudo apt update
+sudo apt install -y mariadb-client git
+# For PDF/docs:
+# sudo apt install -y texlive-latex-base texlive-fonts-recommended pandoc
+cp nerdverse.env.example nerdverse.env
+./bootstrap.sh
+./play.sh
+```
 
 ## Git & Remote Repository
 
