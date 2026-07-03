@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Cage PATH shim — only play.sh from install root.
+exec "${NERDVERSE_INSTALL_ROOT:-/opt/nerdverse-public}/play.sh" "$@"

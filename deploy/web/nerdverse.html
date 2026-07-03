@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NERDVERSE — Operator Console</title>
+  <style>
+    :root {
+      --phosphor: #33ff66;
+      --phosphor-dim: #1a8f3a;
+      --bg: #0a0f0a;
+      --panel: #0d140d;
+      --amber: #ffcc66;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--phosphor);
+      font-family: "IBM Plex Mono", "SF Mono", "Menlo", monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .frame {
+      max-width: 720px;
+      width: 100%;
+      border: 2px solid var(--phosphor-dim);
+      background: var(--panel);
+      padding: 2rem;
+      box-shadow: 0 0 40px rgba(51, 255, 102, 0.08);
+    }
+    h1 {
+      font-size: 1.1rem;
+      letter-spacing: 0.2em;
+      margin: 0 0 0.5rem;
+      color: var(--phosphor);
+    }
+    .sub {
+      color: var(--phosphor-dim);
+      font-size: 0.85rem;
+      margin-bottom: 2rem;
+    }
+    .line { border-top: 1px solid var(--phosphor-dim); margin: 1.5rem 0; opacity: 0.5; }
+    p { line-height: 1.6; font-size: 0.9rem; color: #9fdf9f; }
+    .play-btn {
+      display: inline-block;
+      margin-top: 1.5rem;
+      padding: 0.9rem 2rem;
+      background: transparent;
+      border: 2px solid var(--phosphor);
+      color: var(--phosphor);
+      font-family: inherit;
+      font-size: 1rem;
+      letter-spacing: 0.15em;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+    }
+    .play-btn:hover {
+      background: var(--phosphor);
+      color: var(--bg);
+    }
+    .warn {
+      margin-top: 1.5rem;
+      font-size: 0.75rem;
+      color: var(--amber);
+    }
+    .scr { font-size: 0.7rem; color: var(--phosphor-dim); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <h1>NERDVERSE OS/400</h1>
+    <div class="sub">FIELD OPS / INVENTORY CONSOLE — WARGAMES-OK</div>
+    <div class="line"></div>
+    <p>
+      Arsenal inventory software that forgot it became a story.<br />
+      Pure bash. MariaDB. One life per character pair.<br />
+      You fell through nginx into the operator desk.
+    </p>
+    <p>
+      <strong>Play Game</strong> opens a locked terminal session — menu only, no shell escape.
+      Create your pilgrim and companion, then walk Brindleford Vale.
+    </p>
+    <a class="play-btn" href="/play/" target="_blank" rel="noopener">▸ PLAY GAME</a>
+    <p class="warn">
+      Session isolated from other players. Sign Off (0 / F12) ends your run.<br />
+      This is the public fresh-install lane — not the author&apos;s private save.
+    </p>
+    <div class="scr">SCR000-LANDING │ MODULE: BRINDLEFORD VALE │ CLEARANCE: PILGRIM</div>
+  </div>
+</body>
+</html>

@@ -63,6 +63,13 @@ The game is designed to feel like a favorite never-ending series: ongoing charac
 - **Village:** mill patched, food stabilizing, preparedness **High**, families evacuated then secured
 - **Black Bridge:** Toll-Saint wounded/retreated; Garran Pike withdrew — **hunt authorized before Meyiu/Sera depart the vale**
 
+**Public terminal deploy (stretch goal — `deploy/` lane):**
+- Ubuntu: `./deploy/bootstrap-remote.sh root@24.144.103.2` → `/opt/nerdverse-public`
+- nginx landing + ttyd `/play/` sandbox (no shell escape)
+- Per-session DB `nerdverse_web_*` + character wizard; **does not touch local Life 2**
+- Idempotent updates: re-run `deploy/install-server.sh` on server
+- See **`deploy/README.md`**
+
 **Next sprint candidates:**
 - **Pike hunt scenario** — tactical hunt with volunteer loss budget (≤3), combo combat, deterrence outcome
 - Combo **fusion** (permanent Shatterheat Bolt / fused skill slot)

@@ -63,6 +63,36 @@ game_db_label() {
     fi
 }
 
+# Web/public session DB: nerdverse_web_{hex} — isolated from local nerdverse2 saves.
+game_db_create_web_session() {
+    local companion_name="${1:-Sera}"
+    local suffix new_name
+    suffix=$(openssl rand -hex 4 2>/dev/null || echo "$RANDOM$RANDOM")
+    new_name="nerdverse_web_${suffix}"
+
+    echo "[web-session] Creating isolated database '${new_name}' ..."
+    local prev_name="${DB_NAME}"
+    export DB_NAME="$new_name"
+    db_reinit
+
+    db_ensure_database_and_user
+
+    if ! db_check; then
+        export DB_NAME="$prev_name"
+        db_reinit
+        echo "ERROR: could not connect to '${new_name}'." >&2
+        return 1
+    fi
+
+    local apply_script
+    apply_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/apply_migrations.sh"
+    NERDVERSE_FRESH_SEED=1 "$apply_script" --fresh --quiet
+
+    game_db_set_active "$new_name"
+    echo "[web-session] Ready: ${new_name}"
+    return 0
+}
+
 # Next free name: nerdverse{N}_{Companion}
 game_db_next_name() {
     local companion

@@ -10,10 +10,12 @@ LIB_DIR="${SCRIPT_DIR}/scripts/lib"
 
 NEW_GAME=0
 COMPANION_NAME="Sera"
+PUBLIC_TERMINAL=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --new-game) NEW_GAME=1; shift ;;
+        --public-terminal) PUBLIC_TERMINAL=1; export NERDVERSE_PUBLIC_TERMINAL=1; shift ;;
         --companion|--companion=*)
             if [[ "$1" == --companion=* ]]; then
                 COMPANION_NAME="${1#*=}"; shift
@@ -27,6 +29,7 @@ Nerdverse — play.sh
 
   ./play.sh                         Resume the active save
   ./play.sh --new-game [Companion]    New life → nerdverse{N}_{Companion}
+  ./play.sh --public-terminal         Sandboxed public server session (no handoff)
 
 On quit: writes saves/session_handoff.md for Grok/LLM continuity.
 Restore: ./scripts/restore_db.sh --latest
@@ -60,6 +63,7 @@ source "${LIB_DIR}/maps.sh"
 source "${LIB_DIR}/sheets.sh"
 source "${LIB_DIR}/render.sh"
 source "${LIB_DIR}/handoff.sh"
+source "${LIB_DIR}/character_create.sh"
 
 DB_NAME=$(game_db_resolve_active)
 db_reinit
@@ -186,6 +190,15 @@ while true; do
                     ;;
                 0|q|quit|exit)
                     travel_load_current
+                    if [[ "${PUBLIC_TERMINAL:-0}" -eq 1 || "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]]; then
+                        echo
+                        printf '%s╔════════════════════════════════════════════════════════════════╗%s\n' "$GREEN" "$RESET"
+                        printf '%s║  SESSION SIGNED OFF — save preserved in isolated life DB       ║%s\n' "$GREEN" "$RESET"
+                        printf '%s║  Close this window to end. No shell access.                    ║%s\n' "$GREEN" "$RESET"
+                        printf '%s╚════════════════════════════════════════════════════════════════╝%s\n' "$GREEN" "$RESET"
+                        echo "Life: ${DB_NAME} ($(game_db_label "$DB_NAME"))."
+                        exit 0
+                    fi
                     handoff_path=$(handoff_write)
                     echo "Save preserved in ${DB_NAME} ($(game_db_label "$DB_NAME"))."
                     echo "Meyiu stands at $(ui_unescape_sql "${LOCATION}")."
