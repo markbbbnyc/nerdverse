@@ -272,10 +272,19 @@ show_status() {
     printf '  %sSera Thornwake%s  (HP %d/%d)  —  %s%s...%s\n' \
         "$AMBER" "$RESET" "$SERA_HP" "$SERA_MAX" "$GRAY" "${SERA_NOTES:0:70}" "$RESET"
     echo
-    # Visible "Sera is choosing" reward
+    # Visible "Sera is choosing" reward - core dopamine
     local joint=${SERA_JOINT:-0}
-    printf '  %sSera\'s Bond:%s  Trust %s  |  Bond %s  |  Shared actions: %s\n' \
-        "$GREEN" "$RESET" "${SERA_TRUST:-35}" "${SERA_BOND:-25}" "$joint"
+    local lead=${SERA_LEAD:-0}
+    printf '  %sSera\'s Bond with you:%s  Trust %s  |  Bond %s  |  Shared: %s | Sera led: %s\n' \
+        "$GREEN" "$RESET" "${SERA_TRUST:-35}" "${SERA_BOND:-25}" "$joint" "$lead"
+    echo
+
+    # Explicit "Sera is choosing this" feeling
+    if [[ "${SERA_BOND:-25}" -ge 40 ]]; then
+        printf '  %sSera has chosen to walk this road with you.%s\n' "$AMBER" "$RESET"
+    elif [[ "${SERA_BOND:-25}" -ge 25 ]]; then
+        printf '  %sSera is still choosing whether to fully tie her fate to yours.%s\n' "$DIM" "$RESET"
+    fi
     echo
     printf '%sChapter: %s%s\n' "$DIM" "$CHAPTER" "$RESET"
     printf '%sThreat : %s%s\n' "$DIM" "$THREAT" "$RESET"
@@ -339,6 +348,7 @@ load_sera_state() {
     SERA_PRINCIPLES=$(db_query "SELECT value FROM world_state WHERE state_key='sera_core_principles';")
     SERA_ROMANTIC=$(db_query "SELECT value FROM world_state WHERE state_key='sera_romantic_tension';")
     SERA_JOINT=$(db_query "SELECT value FROM world_state WHERE state_key='sera_joint_experiences';")
+    SERA_LEAD=$(db_query "SELECT value FROM world_state WHERE state_key='sera_leadership_moments';")
 }
 
 sera_update_state() {
@@ -381,7 +391,11 @@ sera_exercise_agency() {
                 trust_change=6
                 bond_change=5
                 her_words="You meant it. Not just talk. I saw it in the orders — and in what you were willing to risk yourself."
-                her_action="Sera steps forward and takes the lead on the practical side: \"I'll sort the scouts' packs and a simple fallback signal. You handle the Sheriff and the core plan. We do this as a team.\""
+                her_action="Sera takes initiative (30% lead): \"I'll decide who among the villagers gets the first of the limited healing and set the fallback signal with the scouts. You focus on the Sheriff. We split the load.\""
+            fi
+            # Additional Sera-led moment for defense flow (30% side)
+            if [[ "$SERA_BOND" -ge 35 ]]; then
+                her_action="$her_action She later quietly sets a simple watch rotation with two villagers based on her own judgment."
             fi
             ;;
         *"risk"*|*"heroic"*|*"noble"*|*"but"*)
@@ -395,6 +409,10 @@ sera_exercise_agency() {
             her_words="You looked at me like I'm allowed to be exactly this sharp and still worth keeping around."
             if [[ "$SERA_ROMANTIC" == *"emerging"* ]]; then
                 her_action="She stays a little closer while you work. No big gesture — just presence that wasn't there before."
+            fi
+            # Light external validation (15%): she found something from talking to someone else
+            if [[ "$SERA_BOND" -ge 30 ]]; then
+                her_action="$her_action She mentions quietly that Old Brenn gave her a small tip on the buckler straps that helped. It filled a small practical gap you couldn't."
             fi
             ;;
         *)
@@ -417,9 +435,18 @@ sera_exercise_agency() {
         log_narrative "Sera (choosing the journey): ${her_words}"
     fi
 
+    # Make the "Sera chose this" feeling explicit after meaningful agency
+    if [[ $bond_change -gt 3 || $trust_change -gt 3 ]]; then
+        echo -e "${AMBER}Sera looks at you for a long moment, then nods once. \"Alright. We do this together.\"${RESET}"
+        log_narrative "Sera explicitly chooses the journey with you."
+    fi
+
     if [[ -n "$her_action" ]]; then
         echo -e "${GRAY}Sera moves on her own: ${her_action}${RESET}"
         log_narrative "Sera acted independently: ${her_action}"
+        # Track her 30% leadership
+        local lead=${SERA_LEAD:-0}
+        sera_update_state "sera_leadership_moments" $(( lead + 1 ))
     fi
 
     if [[ $new_trust -lt 20 ]]; then
@@ -588,6 +615,7 @@ while true; do
                 5|sheriff)
                     echo
                     sera_says "Sheriff Marn can wait five minutes. The medicine won't."
+                    sera_record_joint_experience
                     read -r -p "Press enter..."
                     ;;
                 6|buckler)
@@ -597,6 +625,7 @@ while true; do
                     echo "  Breathguard: once per battle, reduce one hit by 3 + gain +1 Focus"
                     echo
                     echo "It still smells faintly of the forge and the road."
+                    sera_record_joint_experience
                     read -r -p "Press enter..."
                     ;;
                 7|world|map|maps)
@@ -607,6 +636,7 @@ while true; do
                     ;;
                 9|sheet|sheets|char|chars|persona|personas)
                     push_screen "character_sheets"
+                    sera_record_joint_experience
                     ;;
                 0|q|quit|exit|x)
                     echo "Save point preserved in the database."

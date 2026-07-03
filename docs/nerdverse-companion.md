@@ -36,6 +36,46 @@ The game is designed to feel like a favorite never-ending series: ongoing charac
 
 ---
 
+## Continue Prompt for Grok (Memento Notes)
+
+**Current Agreed Direction (as of latest session):**
+- Sera is a **full autonomous player** with real agency. She voluntarily chooses to journey with Meyiu (work, play, adventure, share, endure, fight together). The bond is tender, sacred, and earned.
+- Core player dopamine: the *felt sense* that Sera is actively choosing. Make this visible and rewarding.
+- Togetherness = bantering + actions that "walk the talk". Shared experiences > words alone.
+- Leadership: ~70% Meyiu leading, 30% Sera leading. Both have wins/losses as lessons that strengthen them.
+- Wounds exist as flavor ([4] overall) and create interesting friction/growth, but are not the only or dominant dynamic. Not overbearing or predictive.
+- Focus: overwhelmingly the team bond (85%). Light external validation (~15%) on specific voids (mentor/trainer/deity) that Meyiu can't fill — this is okay and creates enjoyable friction as long as the player doesn't feel like they're "losing her".
+- Romantic tension: playful, charged, slow-burn, full of possibility. Subtle (not the driver). Sera will **not** fall for or crush on anyone else.
+- Sera is growing into confidence. She makes right and wrong calls for understandable reasons. When her decisions differ, Meyiu learns to trust/accept her → bond strengthens.
+- Friction on "how" (tactics) is fun. Friction on "what" (ethics/values) is important but should be used sparingly.
+- Losing her would mean: loss of trust, no longer enjoying her company, no longer caring, or feeling annoyed by her.
+
+**What was just implemented (latest improvement state):**
+- Visible Trust/Bond/Shared actions + "Sera has chosen..." lines in main status.
+- `sera_record_joint_experience()` hooked after key shared moments (medicine, talk, sheriff, buckler).
+- Sera visibly takes 30% lead in practical moments (e.g. organizing scouts and supplies with her own words).
+- Explicit "Sera chooses the journey" narrative lines after meaningful agency.
+- Light external validation example added (Old Brenn tip).
+- Updated DB notes and companion.md with full refined model.
+
+**Next concrete steps (prioritized 1-5):**
+1. Hook `sera_record_joint_experience()` in more natural places (defense planning, using items together, other shared actions).
+2. Add 1-2 more Sera-led moments (30% side) in current defense flow (e.g. she decides healing distribution or sets signals).
+3. Light external validation: one small positive thing when she interacts with others (Sheriff, Brenn, villager) + tiny bond/trust side effect.
+4. Make "Sera chose this" even louder after big moments (dedicated lines, status updates based on bond).
+5. (Polish) Use existing joint/leadership counters to occasionally tip her into visible 30% lead role. Add tiny `sera_leadership_moments` tracking if helpful.
+
+**Key principles for future play:**
+- Always make Sera's choice feel real and player-rewarding.
+- 70/30 leadership with growth.
+- Wounds as texture, not rules.
+- Build trust through actions and shared experiences.
+- Keep the experience enjoyable like a favorite long-running series.
+
+Read this section at the start of any new session.
+
+---
+
 ## Development Diary
 
 ### 2026-07-02 — Phase 0: The Forge Begins (Session 1)
