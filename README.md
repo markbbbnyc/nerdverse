@@ -58,3 +58,22 @@ When you come back to this in 2027 or later:
 - The database *is* the save file.
 
 Enjoy the road.
+
+## Documentation
+
+The main living documentation lives in `docs/`:
+
+- **`nerdverse-companion.md`** — Primary easily human-consumable version (Markdown). This renders beautifully on GitHub with no extra tools. Read this for the diary, runbook, current game state, and mechanics.
+- **`nerdverse-companion.tex`** — Structured LaTeX source (for nice PDF/print versions).
+- **`nerdverse-companion.html`** — Auto-generated basic HTML fallback.
+- **`build-docs.sh`** — Run this script to regenerate PDF (if `pdflatex` is installed) and HTML.
+
+**Recommendation:** Use the `.md` file day-to-day. Run `./docs/build-docs.sh` after significant updates.
+
+The LaTeX and Markdown versions are kept in sync manually for now.
+
+## Git & Remote Repository
+
+This project is designed to live on GitHub under the `markbbbnyc` account for easy cloning across all your Linux machines.
+
+See the Development Diary in the companion docs for setup history.

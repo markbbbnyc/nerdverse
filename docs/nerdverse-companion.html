@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html><head><meta charset='utf-8'>
+<title>The Nerdverse Companion</title>
+<style>body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+h1,h2,h3 { color: #2e7d32; } code, pre { background: #f5f5f5; padding: 2px 4px; } table { border-collapse: collapse; } td,th { border: 1px solid #ccc; padding: 4px 8px; }</style>
+</head><body>
+<h1>The Nerdverse Companion</h1>
+<p><em>Meyiu — The Sinner Who Still Chooses</em></p>
+<p><strong>Note:</strong> This is a basic fallback. For best results install <code>pandoc</code> or use the Markdown file directly.</p>
+<hr>
+<h1>The Nerdverse Companion</h1><br>
+<br>
+<strong>Meyiu — The Sinner Who Still Chooses</strong><br>
+<br>
+<em>A Living Diary, Runbook & Game Documentation</em><br>
+<br>
+<strong>Started:</strong> 2026-07-02  <br>
+<strong>Current Version:</strong> Phase 0 — The First Forge  <br>
+<strong>Co-crafters:</strong> Mark & Grok<br>
+<br>
+<hr><br>
+<br>
+<h2>Introduction & Intent</h2><br>
+<br>
+This document is the living heart of the <strong>Nerdverse</strong> project.<br>
+<br>
+It serves three purposes at once:<br>
+<br>
+- A <strong>diary</strong> of our shared play and creation sessions.<br>
+- A <strong>runbook</strong> with idempotent bootstrap and migration instructions so the game can be installed on any Linux system (or future Mac) with MariaDB.<br>
+- A <strong>game documentation</strong> that remains enjoyable to read years later — for you, or for others if the game ever becomes public.<br>
+<br>
+<h3>Design Philosophy</h3><br>
+<br>
+(stolen shamelessly from the game's own themes)<br>
+<br>
+- <em>You are unfinished, not erased.</em><br>
+- <em>Context before category.</em><br>
+- <em>Repair must become practical.</em><br>
+<br>
+We are building a pure <strong>bash + MariaDB</strong> text adventure / solo RPG engine. No Python, no Node, no fancy frameworks. The goal is maximum portability and learnability.<br>
+<br>
+<hr><br>
+<br>
+<h2>Development Diary</h2><br>
+<br>
+<h3>2026-07-02 — Phase 0: The Forge Begins (Session 1)</h3><br>
+<br>
+<strong>In-Game Situation at Start</strong><br>
+<br>
+Meyiu stands at Brindleford Forge after purchasing the Ash-Wood Buckler (crafted from captured bandit materials) and a Repair and Supply Bundle. Coins: 4 silver. HP 11/13. Road XP 5/10. Sera Thornwake is with him, provisionally trusting after the road ambush where the medicine crate was saved.<br>
+<br>
+Sera's suggestion: "Medicine room next. Unless you plan to treat stab wounds with personal growth."<br>
+<br>
+<strong>What We Built Today</strong><br>
+<br>
+- Initialized git repository for full GitHub portability.<br>
+- Created clean project skeleton: `sql/`, `scripts/`, `docs/`, `bin/`, `saves/`, `logs/`.<br>
+- Created this companion document (both LaTeX and Markdown).<br>
+- Designed initial idempotent MariaDB schema focused on characters, inventory, world state, and session logging.<br>
+- Wrote the first migration and seed that exactly reproduces the restart packet state.<br>
+- Created the foundation for a pure-bash CLI that loads state from the database.<br>
+- Began the bootstrap/install scripts (idempotent by design).<br>
+<br>
+<strong>Technical Decisions Made</strong><br>
+<br>
+- Pure bash + `mariadb` client only. Scripts must run on minimal Linux installs.<br>
+- Configuration via environment variables + optional `nerdverse.env` file.<br>
+- Migrations are numbered and tracked in a `schema_migrations` table.<br>
+- All SQL is written to be re-runnable safely (`CREATE ... IF NOT EXISTS`, `INSERT ... ON DUPLICATE KEY UPDATE` or `INSERT IGNORE`).<br>
+- Narrative will live in this document + in-game `session_log` table.<br>
+<br>
+<h3>2026-07-02 — Bootstrap & First Engine Run</h3><br>
+<br>
+The foundation scripts are now real and tested:<br>
+<br>
+- `bootstrap.sh` creates `nerdverse.env`, ensures DB access, and delegates to the migration runner.<br>
+- `scripts/apply_migrations.sh` is fully idempotent. It applies `sql/migrations/*.sql` in order and records them in `schema_migrations`. Seeds are re-runnable.<br>
+- `scripts/db.sh` centralizes connection logic and helpers.<br>
+- `play.sh` (Phase 0) loads live state from the database, prints a nice status block, shows crude ASCII, and lets you pick basic actions. It already updates the DB for some choices.<br>
+- Full initial world (Meyiu + Sera stats, inventory with correct equipped flags, passives, Brindleford locations, world_state flags) was seeded exactly from the restart packet.<br>
+<br>
+<em>Ran successfully on the original machine. The state in nerdverse2 matches the PDF save point.</em><br>
+<br>
+We are now ready to step into the medicine room together.<br>
+<br>
+<h3>2026-07-02 — First Real Play: The Medicine Room (Session 1 continued)</h3><br>
+<br>
+<strong>Player Action</strong><br>
+<br>
+Meyiu followed Sera to the medicine room. He playfully held her accountable for days of promises to heal him that kept getting postponed. Mentioned his ribs hurt. Expressed interest in seeing how good a healer she actually is, in case she becomes a proper adventuring companion.<br>
+<br>
+<strong>What Happened in Play</strong><br>
+<br>
+- Locations updated in DB: both characters now in "Sera's Medicine Room".<br>
+- Narrative and companion logs written.<br>
+- Sera finally tended to Meyiu. Used field-healer technique (modeled on her "Healer's Rebuke"): healed 4 HP. Meyiu is now at full 13/13.<br>
+- Banter established: Sera deflects with sharp humor but shows competence and growing respect.<br>
+- They begin inventorying the recovered medicine crate together.<br>
+<br>
+This session demonstrated early companion interaction and healing mechanics. Good test of flavor text + mechanical update loop.<br>
+<br>
+State saved. Ready for next input.<br>
+<br>
+<hr><br>
+<br>
+<h2>Current Game State (Living Snapshot)</h2><br>
+<br>
+<strong>Location:</strong> Sera's Medicine Room  <br>
+<strong>Immediate Context:</strong> Meyiu and Sera have entered the medicine room to inventory the recovered medicine crate. Meyiu's ribs have been tended.<br>
+<br>
+<strong>Time Pressure:</strong> The Black Bridge Gang expected the thieves back. Retaliation possible by dusk or midnight.<br>
+<br>
+<h3>Meyiu — The Sinner Who Still Chooses</h3><br>
+<br>
+| Field          | Value |<br>
+|----------------|-------|<br>
+| Name           | Meyiu |<br>
+| Full Title     | The Sinner Who Still Chooses |<br>
+| Expanded       | And Chooses What Is His To Carry<br>Beloved, Responsible, Unfinished, Still Becoming, Pilgrim of the Unfinished |<br>
+| Class          | Mage |<br>
+| Level / Milestone | 2 |<br>
+| Current HP     | 13 / 13 (full) |<br>
+| Coins          | 4 silver |<br>
+| Road XP        | 5 / 10 |<br>
+| Location       | Sera's Medicine Room |<br>
+| Main Attack    | Firebolt (6 damage) |<br>
+| Improved       | Zen-Mage Firebolt (6 + overkill heal +1) |<br>
+<br>
+<strong>Equipped & Key Boons</strong><br>
+- Ashen Prayer Bead (+1 Focus on calm magical/spiritual control actions)<br>
+- Penitent's Wrap (once per battle, reduce incoming damage by 2)<br>
+- Ash-Wood Buckler (Passive Guard: reduce first physical hit by 1; Breathguard: reduce one hit by 3 +1 Focus)<br>
+<br>
+<strong>Key Inventory Items</strong><br>
+- Healing Potion (restores 6 HP)<br>
+- Leechheart Pearl<br>
+- Repair and Supply Bundle (recent)<br>
+- Cinder Nameplate, Black Brazier-Glass Shard, Gray-Blue Question Slip, White Quill Splinter, Road Knife, Black Bridge-Token, etc.<br>
+<br>
+<h3>Sera Thornwake (Companion Prospect)</h3><br>
+<br>
+| Field   | Value |<br>
+|---------|-------|<br>
+| HP      | 14 / 14 |<br>
+| Role    | Field-healer, trail archer, buckler fighter |<br>
+| Status  | With Meyiu in Brindleford, provisional trust. Not yet permanently recruited. |<br>
+<br>
+Her abilities (known):<br>
+- Bow Shot — 3 damage<br>
+- Buckler Guard — reduce damage to self or ally by 2 (once per round)<br>
+- Healer's Rebuke — heal 4 HP and deliver an insult (once)<br>
+<br>
+<h3>The Black Bridge Gang (Current Threat)</h3><br>
+<br>
+Leader: Garran Pike (Bridge-Mouth). Champion: Toll-Saint (heavy shieldman). Strength: 9–12 fighters. Base: abandoned tollhouse.<br>
+<br>
+<hr><br>
+<br>
+<h2>World & Lore Notes</h2><br>
+<br>
+<h3>Brindleford (Current Chapter: The Road of Bread and Iron)</h3><br>
+<br>
+A rain-soaked village near an old iron bridge.<br>
+<br>
+Problems:<br>
+- Medicine shortages + cough-fever<br>
+- Weak defenses<br>
+- Black Bridge Gang controlling the bridge<br>
+- Slow/possibly sabotaged Old Mill<br>
+- Injured smith (Old Brenn)<br>
+<br>
+<strong>Key Locations (initial map)</strong><br>
+<br>
+```<br>
+[ Inn (Hearthmouse) ]     [ Forge (Cold Forge / Old Brenn) ]<br>
+           \                     /<br>
+            \                   /<br>
+[ Well ] -- [ Sheriff Marn ] -- [ Medicine Room (Sera) ]<br>
+           /<br>
+[ Road to Old Mill ]<br>
+           |<br>
+[ Iron Bridge / Gang Tollhouse ]<br>
+```<br>
+<br>
+<hr><br>
+<br>
+<h2>Runbook: Bootstrap & Migration</h2><br>
+<br>
+<h3>Requirements (Linux or macOS)</h3><br>
+<br>
+- MariaDB client (`mariadb` or `mysql` command)<br>
+- Bash (4+ recommended)<br>
+- Git (for cloning the repo)<br>
+- A MariaDB user that can create the `nerdverse2` database and tables<br>
+<br>
+<h3>Idempotent Bootstrap</h3><br>
+<br>
+The goal: on a fresh system you should be able to:<br>
+<br>
+```bash<br>
+git clone <repo><br>
+cd nerdverse<br>
+./bootstrap.sh<br>
+./play.sh<br>
+```<br>
+<br>
+And later:<br>
+<br>
+```bash<br>
+./bootstrap.sh   # safe to re-run<br>
+```<br>
+<br>
+<h3>First-Time Setup on a New Machine</h3><br>
+<br>
+1. Install MariaDB server + client.<br>
+2. Create the database user (example):<br>
+<br>
+   ```sql<br>
+   CREATE USER 'mark'@'localhost' IDENTIFIED BY 'yourpassword';<br>
+   GRANT ALL ON nerdverse2.* TO 'mark'@'localhost';<br>
+   FLUSH PRIVILEGES;<br>
+   ```<br>
+<br>
+3. (Optional but recommended) Create a `nerdverse.env` file (see template).<br>
+4. Run `./bootstrap.sh`<br>
+<br>
+<h3>Configuration</h3><br>
+<br>
+Create `nerdverse.env` (git-ignored):<br>
+<br>
+```bash<br>
+<h1>nerdverse.env - local configuration (git-ignored)</h1><br>
+DB_USER=mark<br>
+DB_NAME=nerdverse2<br>
+DB_HOST=localhost<br>
+<br>
+<h1>If you use password auth instead of socket / .my.cnf, set:</h1><br>
+<h1>DB_PASS=yourpassword</h1><br>
+```<br>
+<br>
+The scripts will source this if present.<br>
+<br>
+<hr><br>
+<br>
+<h2>Technical Architecture (Current)</h2><br>
+<br>
+- All state lives in MariaDB `nerdverse2`.<br>
+- Bash scripts only for the engine and UI.<br>
+- Migrations are plain `.sql` files applied in lexical order.<br>
+- A `schema_migrations` table prevents re-application.<br>
+- Session log is append-only for narrative + debugging.<br>
+- Future: simple command dispatch in bash using `case` + functions.<br>
+<br>
+<hr><br>
+<br>
+<h2>Documentation Strategy</h2><br>
+<br>
+This project maintains <strong>two versions</strong> of the companion document:<br>
+<br>
+- `nerdverse-companion.tex` — The structured LaTeX source (for beautiful printed/PDF versions when you have a TeX installation).<br>
+- `nerdverse-companion.md` — The easily human-consumable Markdown version (renders beautifully on GitHub, readable anywhere with zero dependencies).<br>
+<br>
+A build script (`docs/build-docs.sh`) will attempt to produce a PDF from the `.tex` when `pdflatex` is available on the system.<br>
+<br>
+The Markdown version is the primary "always available" documentation.<br>
+<br>
+<hr><br>
+<br>
+<h2>Session Log</h2><br>
+<br>
+<h3>2026-07-02 — First Forge Session</h3><br>
+<br>
+Initial scaffolding complete. We are standing at the forge door with Sera.<br>
+<br>
+<em>"Loaded save: Meyiu is at Brindleford Forge after buying the Ash-Wood Buckler and Repair and Supply Bundle. Sera is urging him toward her medicine room..."</em><br>
+<br>
+<strong>Continued in the Medicine Room session</strong> (see diary above).<br>
+<br>
+<hr><br>
+<br>
+<h2>Appendix: Original Restart Packet Summary</h2><br>
+<br>
+(The full 20-page PDF `Nerdverse_2.pdf` is kept in the project root for reference. Key mechanical and narrative elements have been transcribed into the schema seed and this document.)<br>
+<br>
+<hr><br>
+<br>
+<em>End of current companion document. This file is updated live as we play and build.</em><br></body></html>
