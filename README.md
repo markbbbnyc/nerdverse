@@ -2,7 +2,7 @@
 
 **Meyiu — The Sinner Who Still Chooses**
 
-A pure bash + MariaDB solo text RPG / interactive story.
+A pure bash + MariaDB text RPG. The database is the save file.
 
 ## Philosophy
 
@@ -11,98 +11,58 @@ A pure bash + MariaDB solo text RPG / interactive story.
 - You are unfinished, not erased.
 - We build the engine while we play the game.
 
-## Quick Start (on this machine or any Linux/Mac with MariaDB client)
+## Quick Start
 
 ```bash
 git clone <repo-url>
 cd nerdverse
-
-# First time (or after fresh clone)
+cp nerdverse.env.example nerdverse.env   # first time only
 ./bootstrap.sh
-
-# Play
 ./play.sh
 ```
 
-The bootstrap is **idempotent**. It also creates a dedicated low-privilege MariaDB user (`nerdverse` by default) so the game runs with proper separation from your personal database account. You can run it again safely.
+Bootstrap is **idempotent** — safe to re-run. It creates a dedicated MariaDB app user (`nerdverse`) and applies migrations.
 
-## Project Structure
+## Play
 
-- `bootstrap.sh` — one-command setup for new systems
-- `play.sh` — the game (immersive terminal UI: full-screen canvas, centered, AS/400 push/pop navigation, green-screen colors + icons, world + local maps, character sheets)
-- `install-deps.sh` or see `docs/linux-packages.md` — target Linux package list
-- `scripts/` — db helpers, migration runner
-- `sql/migrations/` — numbered, re-runnable schema (incl. 002_maps)
-- `sql/seeds/` — initial world + character state
-- `maps/` — source ASCII for world + local maps (loaded into DB)
-- `docs/` — companion docs (.md is the easy daily read, .tex for PDF, build-docs.sh)
-- `nerdverse.env` — local DB config (**never committed** — use `nerdverse.env.example`)
+| Command | Purpose |
+|---------|---------|
+| `./play.sh` | Resume active save (daily backup + safe migrations) |
+| `./play.sh --new-game Sera` | New life in `nerdverse{N}_Sera` (old saves kept) |
+| `./scripts/restore_db.sh --latest` | Restore from local SQL backup |
+| Quit game (`0`) | Writes `saves/session_handoff.md` for Grok/LLM resume |
+
+Active save: `saves/active_db` (overrides `nerdverse.env` `DB_NAME`).
+
+## Project Layout
+
+```
+play.sh                 # Main loop (thin orchestrator)
+bootstrap.sh            # First-time / idempotent setup
+scripts/
+  db.sh backup.sh game_db.sh apply_migrations.sh restore_db.sh
+  lib/                  # Game modules (ui, travel, sera, combat, maps, …)
+sql/migrations/         # Schema (versioned, re-runnable)
+sql/seeds/              # Catalog (safe) + fresh game (new lives only)
+maps/                   # ASCII map sources → loaded into DB
+saves/db/               # Local MariaDB dumps (git-ignored)
+docs/nerdverse-companion.md   # Diary, runbook, lore, roadmap
+```
 
 ## Current Phase
 
 **Phase 0 — The First Forge**
 
-Current pause point: Hearthmouse Inn after supper. Meyiu has committed to measured village defense (2 scouts sent with strict no-engagement orders). See `docs/nerdverse-companion.md` for full living state.
+Brindleford Vale: forge, medicine room, inn, sheriff, mill, bridge — connected via the `locations` table. Travel **[1]**, local action **[4]**. AS/400 operator UI (compact on short terminals: auto ≤30 rows, or `NERDVERSE_COMPACT=1`). Progression: practice tags, rare breakthrough levels, 2–3 combat actives, party combos. Sera trust/bond 0–100; DM + terminal play supported via `saves/session_handoff.md`.
 
-`play.sh` now delivers a proper retro-terminal experience (centered full-screen feel, AS/400-style screen stack, green phosphor aesthetic, maps, character sheets).
-
-State is persisted in the `nerdverse2` MariaDB database and can be resumed via the scripts.
-
-## Long-term Goals
-
-- Build a real, playable text RPG engine using only bash + MariaDB.
-- Keep a beautiful, readable companion document that ages well.
-- Make the entire thing trivially installable on any of my Linux boxes.
-- Gradually peel away the need for Grok so I can play solo later.
-- Have fun and learn.
-
-## Notes for Future Mark
-
-When you come back to this in 2027 or later:
-- Read the companion .tex (or the compiled PDF).
-- Run `./bootstrap.sh` then `./play.sh` (now with full terminal personality: maps, sheets, nice navigation).
-- The database *is* the save file.
-
-Enjoy the road.
+Full living state, diary, and roadmap: **`docs/nerdverse-companion.md`**
 
 ## Documentation
 
-The main living documentation lives in `docs/`:
+- **`docs/nerdverse-companion.md`** — primary daily read (diary + runbook + mechanics)
+- **`docs/linux-packages.md`** — distro package lists
+- **`docs/build-docs.sh`** — optional PDF/HTML from LaTeX/Markdown
 
-- **`nerdverse-companion.md`** — Primary easily human-consumable version (Markdown). This renders beautifully on GitHub with no extra tools. Read this for the diary, runbook, current game state, and mechanics.
-- **`nerdverse-companion.tex`** — Structured LaTeX source (for nice PDF/print versions).
-- **`nerdverse-companion.html`** — Auto-generated basic HTML fallback.
-- **`build-docs.sh`** — Run this script to regenerate PDF (if `pdflatex` is installed) and HTML.
+## Requirements
 
-**Recommendation:** Use the `.md` file day-to-day. Run `./docs/build-docs.sh` after significant updates.
-
-The LaTeX and Markdown versions are kept in sync manually for now.
-
-## Target Linux Systems — Package Requirements
-
-See **`docs/linux-packages.md`** for the complete, maintained list of packages for Debian/Ubuntu, Fedora, Arch, openSUSE, etc.
-
-It covers:
-- MariaDB client (required to play)
-- Git & basic shell tools
-- LaTeX (optional — for building nice PDFs of the companion docs)
-- Pandoc (optional — better HTML)
-- Nice-to-haves (dialog, figlet, etc.)
-
-Quick Ubuntu example:
-
-```bash
-sudo apt update
-sudo apt install -y mariadb-client git
-# For PDF/docs:
-# sudo apt install -y texlive-latex-base texlive-fonts-recommended pandoc
-cp nerdverse.env.example nerdverse.env
-./bootstrap.sh
-./play.sh
-```
-
-## Git & Remote Repository
-
-This project is designed to live on GitHub under the `markbbbnyc` account for easy cloning across all your Linux machines.
-
-See the Development Diary in the companion docs for setup history.
+MariaDB client + bash. See `docs/linux-packages.md` for per-distro install commands.

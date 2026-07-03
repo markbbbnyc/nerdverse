@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # scripts/apply_migrations.sh
 # Idempotent migration + map loader for Nerdverse.
-# Run this as many times as you like. It also loads whimsical ASCII maps
-# from maps/*.txt into the DB (for play.sh world/local maps).
+#
+# Usage:
+#   ./scripts/apply_migrations.sh              # migrations + catalog only (preserves save)
+#   ./scripts/apply_migrations.sh --fresh    # wipe game state + load fresh starting save
+#
+# Fresh seed also runs automatically when no player character exists (first install).
 
 set -euo pipefail
 
@@ -13,61 +17,132 @@ source "${SCRIPT_DIR}/db.sh"
 
 MIGRATIONS_DIR="${PROJECT_ROOT}/sql/migrations"
 SEEDS_DIR="${PROJECT_ROOT}/sql/seeds"
+CATALOG_SEED="001_catalog.sql"
+FRESH_SEED="002_fresh_game.sql"
 
-echo "=== Nerdverse Migration Runner ==="
-echo "Database: ${DB_NAME}  User: ${DB_USER}"
+FRESH_MODE=0
+QUIET=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --fresh) FRESH_MODE=1 ;;
+        --quiet|-q) QUIET=1 ;;
+    esac
+done
+
+if [[ "${NERDVERSE_FRESH_SEED:-}" == "1" ]]; then
+    FRESH_MODE=1
+fi
+
+_log() {
+    if [[ $QUIET -eq 0 ]]; then
+        echo "$@"
+    fi
+}
+
+db_reset_game_state() {
+    _log "  → Resetting live game state (characters, inventory, world progress) ..."
+    # Order matters for foreign keys; locations + maps + schema_migrations are preserved.
+    $MARIADB <<'SQL'
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE session_log;
+TRUNCATE TABLE inventory;
+TRUNCATE TABLE character_abilities;
+TRUNCATE TABLE characters;
+DELETE FROM world_state;
+UPDATE locations SET visited = FALSE;
+SET FOREIGN_KEY_CHECKS = 1;
+SQL
+    _log "    ✓ game state cleared"
+}
+
+db_has_player() {
+    local count
+    count=$(echo "SELECT COUNT(*) FROM characters WHERE is_player = TRUE;" | $MARIADB_QUIET 2>/dev/null || echo "0")
+    [[ "${count:-0}" -gt 0 ]]
+}
+
+_log "=== Nerdverse Migration Runner ==="
+_log "Database: ${DB_NAME}  User: ${DB_USER}"
 
 db_check || exit 1
 
-# The database + dedicated user are ensured by bootstrap.sh.
-# We just make sure the schema_migrations table exists.
-
-# Ensure migrations table exists (it is created by 001)
 $MARIADB -e "CREATE TABLE IF NOT EXISTS schema_migrations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     migration VARCHAR(255) NOT NULL UNIQUE,
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;"
 
-echo
-echo "Applying migrations from ${MIGRATIONS_DIR}..."
+_log
+_log "Applying migrations from ${MIGRATIONS_DIR}..."
 
-# Process migrations in lexical order (001_..., 002_...)
 for mig in $(ls -1 "${MIGRATIONS_DIR}"/*.sql 2>/dev/null | sort); do
     name=$(basename "$mig" .sql)
-    
-    # Check if already applied
+
     applied=$(echo "SELECT COUNT(*) FROM schema_migrations WHERE migration='${name}';" | $MARIADB_QUIET)
-    
+
     if [[ "$applied" -eq "0" ]]; then
-        echo "  → Applying ${name}"
+        _log "  → Applying ${name}"
         if $MARIADB < "$mig"; then
             echo "INSERT INTO schema_migrations (migration) VALUES ('${name}');" | $MARIADB >/dev/null
-            echo "    ✓ ${name} applied"
+            _log "    ✓ ${name} applied"
         else
             echo "    ✗ FAILED: ${name}" >&2
             exit 1
         fi
     else
-        echo "  ✓ ${name} already applied (skipped)"
+        _log "  ✓ ${name} already applied (skipped)"
     fi
 done
 
-echo
-echo "Applying seeds from ${SEEDS_DIR} (idempotent inserts)..."
+_log
+_log "Applying catalog seeds — safe, does not touch save progress ..."
+for cat in "${CATALOG_SEED}" "003_progression_catalog.sql"; do
+    if [[ -f "${SEEDS_DIR}/${cat}" ]]; then
+        if $MARIADB < "${SEEDS_DIR}/${cat}"; then
+            _log "    ✓ ${cat} complete"
+        else
+            echo "    ✗ ${cat} failed" >&2
+            exit 1
+        fi
+    fi
+done
 
-for seed in $(ls -1 "${SEEDS_DIR}"/*.sql 2>/dev/null | sort); do
-    name=$(basename "$seed")
-    echo "  → Running seed: ${name}"
-    if $MARIADB < "$seed"; then
-        echo "    ✓ seed complete"
+# Decide whether to load the fresh starting save
+RUN_FRESH=0
+if [[ $FRESH_MODE -eq 1 ]]; then
+    RUN_FRESH=1
+    _log
+    _log "Fresh game requested (--fresh)."
+elif ! db_has_player; then
+    RUN_FRESH=1
+    _log
+    _log "No player character found — first install; loading fresh starting save."
+fi
+
+if [[ $RUN_FRESH -eq 1 ]]; then
+    if [[ $FRESH_MODE -eq 1 ]]; then
+        db_reset_game_state
+    fi
+    _log "  → Running fresh game seed: ${FRESH_SEED}"
+    if [[ -f "${SEEDS_DIR}/${FRESH_SEED}" ]]; then
+        if $MARIADB < "${SEEDS_DIR}/${FRESH_SEED}"; then
+            _log "    ✓ fresh game seed complete"
+        else
+            echo "    ✗ fresh game seed failed" >&2
+            exit 1
+        fi
     else
-        echo "    ! seed had errors (may be harmless if using ON DUPLICATE)" >&2
+        echo "    ✗ missing ${FRESH_SEED}" >&2
+        exit 1
     fi
-done
+else
+    _log
+    _log "Existing save detected — fresh game seed skipped (use --fresh to reset)."
+fi
 
-echo
-echo "Loading whimsical maps (from maps/*.txt) into database..."
+_log
+_log "Loading whimsical maps (from maps/*.txt) into database..."
 MAPS_DIR="${PROJECT_ROOT}/maps"
 if [[ -d "$MAPS_DIR" ]]; then
     for mfile in $(ls -1 "${MAPS_DIR}"/*.txt 2>/dev/null | sort); do
@@ -81,7 +156,6 @@ if [[ -d "$MAPS_DIR" ]]; then
             *)       mtype="local"; related="$map_key" ;;
         esac
 
-        # Build INSERT safely so newlines in ascii become real newlines inside the SQL string literal
         (
             printf "INSERT INTO maps (map_key, title, ascii, map_type, related_location, revealed)
 VALUES ('%s', '%s', '" "$map_key" "$title_esc"
@@ -95,16 +169,17 @@ ON DUPLICATE KEY UPDATE
     revealed = TRUE;\n" "$mtype" "$related"
         ) | $MARIADB
 
-        echo "  ✓ map '${map_key}' loaded/updated"
+        _log "  ✓ map '${map_key}' loaded/updated"
     done
 else
-    echo "  (no maps/ dir found — skipping)"
+    _log "  (no maps/ dir found — skipping)"
 fi
 
-echo
-echo "=== Migration run complete ==="
+_log
+_log "=== Migration run complete ==="
 
-# Show current migration state
-echo
-echo "Applied migrations:"
-echo "SELECT migration, applied_at FROM schema_migrations ORDER BY id;" | $MARIADB
+if [[ $QUIET -eq 0 ]]; then
+    echo
+    echo "Applied migrations:"
+    echo "SELECT migration, applied_at FROM schema_migrations ORDER BY id;" | $MARIADB
+fi

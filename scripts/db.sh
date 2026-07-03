@@ -6,10 +6,15 @@
 # - Bootstrap/setup can use a privileged account (DB_SETUP_USER) to create the app user + grants.
 # - This makes the game portable across any local user on Linux/macOS.
 
-# Load config if present
+# Load config if present (preserve caller-exported DB_NAME for multi-save / --new-game)
+_CALLER_DB_NAME="${DB_NAME:-}"
 if [[ -f "$(dirname "$0")/../nerdverse.env" ]]; then
     source "$(dirname "$0")/../nerdverse.env"
 fi
+if [[ -n "${_CALLER_DB_NAME}" ]]; then
+    DB_NAME="${_CALLER_DB_NAME}"
+fi
+unset _CALLER_DB_NAME
 
 # === Runtime (game) connection ===
 DB_USER="${DB_USER:-nerdverse}"
@@ -31,8 +36,12 @@ _build_mariadb_cmd() {
     fi
 }
 
-MARIADB=$(_build_mariadb_cmd "${DB_USER}" "")
-MARIADB_QUIET=$(_build_mariadb_cmd "${DB_USER}" "--silent --skip-column-names")
+db_reinit() {
+    MARIADB=$(_build_mariadb_cmd "${DB_USER}" "")
+    MARIADB_QUIET=$(_build_mariadb_cmd "${DB_USER}" "--silent --skip-column-names")
+}
+
+db_reinit
 
 # === Privileged / Setup connection (used only by bootstrap) ===
 # Defaults to the current Unix user (often has socket privileges) or root.

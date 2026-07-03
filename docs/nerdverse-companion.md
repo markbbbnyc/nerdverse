@@ -45,20 +45,29 @@ The game is designed to feel like a favorite never-ending series: ongoing charac
 - Long-term: JRPG tactical combat (FF/Diablo style), character progression, possible multi-player hosted worlds.
 - Current focus (B): Build the "physics" and canvas (combat, action systems, extensible characters) while keeping the current run sacred and meaningful. Meta/emo/philosophical side + mechanical frame together.
 
-**What was just implemented:**
-- Recent event tracker (`sera_recent_event`): Talk after meaningful actions (defend, joint, medicine) gives stronger contextual bond. Repetition heavily penalized. Actions drive stats; timely words amplify.
-- Basic turn-based combat prototype (dice via RANDOM, abilities from character, enemy stub, HP updates, simple player choices). Hooked into sheriff choice for testing.
-- Bond/leadership visible in status; Sera can take 30% lead.
-- Slower burn overall for trust/bond. Passive decay (-1 per action) + repetition penalties + occasional drops from bad/risky choices keep it from being a pure upward climb. High values (70+) unlock warmer, more committed Sera responses. Low values create visible tension and fragility.
-- Combat as starting "physics" layer for JRPG tactical action (expandable for mage custom).
+**What was just implemented (2026-07-03 — play/build session):**
+- **AS/400 operator UI:** screen IDs, ledger menu, PF-keys, compact mode for ≤30-row terminals (`NERDVERSE_COMPACT=1`).
+- **Progression system (`005_progression.sql`):** practice tags, breakthrough levels, 2–3 combat actives, combos, inert shiny components.
+- **Sera in combat:** ally avatar cards (Meyiu │ Sera │ Foe), autonomous support turns, `IN THE ROOM` milestones.
+- **Scenarios:** `scenario_sheriff` (defense planning, not repeat scout ambush), mill/bridge stakes, Pike hunt council hook.
+- **DM play mode:** chat-room banter with Grok as DM + Sera; `session_handoff.md` includes DM resume prompt.
+- **Save safety:** daily backup, `restore_db.sh`, multi-life DBs, modular `scripts/lib/*.sh`.
 
-**Next steps (canvas & physics focus):**
-- Expand recent_event usage and add more contextual bonuses.
-- Flesh out combat: proper enemy table or state, mage abilities (fire, elements), status effects, tactical choices.
-- Character creation / custom mage support: flexible abilities, starting kits, so user can create their own mage.
-- Make characters more generic (beyond hardcoded Meyiu/Sera) for future different lives.
-- Scenarios that trigger combat or risk (to make "after battle" talk meaningful).
-- Keep pure bash + MariaDB. No frameworks.
+**Life 2 (legacy) — session paused at (2026-07-03):**
+- **Chapter:** *The Morning After the Toll*
+- **Where:** Hearthmouse Inn — dawn council done; **Pike hunt organizing** (dusk tomorrow)
+- **Meyiu:** Lv2, HP 13/13, Road XP 11/25, unlock: Field Mender's Habit
+- **Sera:** Lv2, Trust/Bond 100, mood `easy-with-you`, unlocks: Chill Residue, Field Lab Satchel
+- **Combo discovered:** Thermal Shock (Frozen Ground + Firebolt)
+- **Village:** mill patched, food stabilizing, preparedness **High**, families evacuated then secured
+- **Black Bridge:** Toll-Saint wounded/retreated; Garran Pike withdrew — **hunt authorized before Meyiu/Sera depart the vale**
+
+**Next sprint candidates:**
+- **Pike hunt scenario** — tactical hunt with volunteer loss budget (≤3), combo combat, deterrence outcome
+- Combo **fusion** (permanent Shatterheat Bolt / fused skill slot)
+- Healing potion use in/post combat
+- Equipment equip UI; enemy table in DB
+- In-game save selector; ttyd/nginx operator-console notes
 
 **Principles:**
 - One life per set of characters. Permanent consequences.
@@ -81,15 +90,17 @@ This is the living roadmap for building the "canvas" — the physics, systems, a
 - Equipment and abilities are deeply integrated.
 - The engine provides the frame; characters impress themselves on it.
 
-### Milestone 1: Core Canvas & One-Life Foundation (Current / Mostly Done)
-- Persistent single world in MariaDB (the save file).
-- Immersive terminal UI (full-screen, push/pop navigation, green phosphor aesthetic).
-- Basic character sheets, inventory (with equipped flag), world state, maps.
-- Sera as full autonomous companion with trust/bond/recent-event system.
-- Slow-burn relationship mechanics with decay and contextual bonuses.
+### Milestone 1: Core Canvas & One-Life Foundation (Done)
+- Persistent world in MariaDB (the save file); multi-life DB naming; backup/restore.
+- Immersive terminal UI (push/pop navigation, green phosphor aesthetic).
+- Character sheets, inventory, world state, ASCII maps.
+- Sera agency with 0–100 trust/bond, contextual talk, leadership counter.
+- Location graph travel (`locations.connected_to`) + per-place actions.
 - Basic combat prototype with mage abilities.
+- `play.sh` split into sourced modules under `scripts/lib/`.
 
 ### Milestone 2: Equipment & Ability System (Phase 1 — In Progress)
+- **Done:** `005_progression` migration; `scripts/lib/progression.sh`; combat ally cards; combo recipes; breakthrough ceremonies in `./play.sh`.
 - Proper equipment slots (weapon, off-hand, armor, focus, accessory...).
 - Equipment modifiers that affect abilities and combat (e.g. staff boosts Firebolt damage).
 - Pull abilities dynamically from `character_abilities` table into combat.
@@ -123,6 +134,7 @@ This is the living roadmap for building the "canvas" — the physics, systems, a
 - Simple creation flow for new player + companion characters.
 - Define starting wounds, grails, core abilities, equipment kits.
 - Support for multiple "lives" (each a fresh, non-repeatable story on the same canvas).
+- **In-game save selector** (`play.sh` menu): list `nerdverse2_Sera`, `nerdverse3_Elara`, … and switch active life without deleting old databases. (`./play.sh --new-game [Companion]` already creates `nerdverse{N}_{Name}` per life; selector UI deferred.)
 
 ### Milestone 8: World Reactivity & Legacy
 - Characters leave lasting marks on the world (reputation, changed locations, persistent events).
@@ -133,7 +145,7 @@ This is the living roadmap for building the "canvas" — the physics, systems, a
 - Shared or parallel worlds.
 - Eventually a hosted canvas where different "lives" can interact or leave echoes.
 
-**Current Focus**: Milestone 2 (Equipment + Ability System) while keeping the current life sacred and testing mechanics in context.
+**Current Focus**: Milestone 2 (Equipment + Ability System) + playtesting travel/bond pacing in the active Brindleford life.
 
 **Recent Polish (Combat UI)**: Combat avatars are now bordered game-card tiles with larger width (20-char inner) and extra internal padding/empty lines so the ASCII art and minimal HP stats (bar + numbers) are not "boxed in". PLAYER and ENEMY labels above, consistent borders for visual guidance and reduced eye strain. Fixed HP line padding for alignment. Updated in draw_ascii_combatants().
 
@@ -142,6 +154,23 @@ We will continue to interleave "play" and "build" so the systems are validated t
 ---
 
 ## Development Diary
+
+### 2026-07-03 — Brindleford Defense, Progression & DM Play (Session 2)
+
+**Play mode:** Grok as DM + Sera; Mark as Meyiu; chat-room banter with `./play.sh` + MariaDB as mechanical law.
+
+**In-game arc (Life 2, `nerdverse2`):**
+- Repelled Black Bridge probe at medicine room; discovered **Thermal Shock** combo.
+- Evacuated families to inn; deterred main push with coordinated Frozen Ground + Firebolt (Toll-Saint wounded, Pike withdrew).
+- Quiet channel with Sera (bond 100, mood `easy-with-you`); dawn council with Marn.
+- **Paused:** Pike hunt organizing — 8 volunteers, dusk tomorrow; Meyiu/Sera field advisors; crush Pike before continuing east.
+
+**Engine shipped this session:**
+- `005_progression.sql` — practice, unlocks, combos, breakthrough levels.
+- `scripts/lib/progression.sh`, enhanced `combat.sh` (ally cards), `scenario_sheriff`, compact AS/400 main screen.
+- Handoff + DM resume prompt; backup `nerdverse2_2026-07-03_session_end.sql`.
+
+**Resume:** Paste `saves/session_handoff.md` into Grok, or `./play.sh` for operator UI. Next beat: **Pike hunt**.
 
 ### 2026-07-02 — Phase 0: The Forge Begins (Session 1)
 
@@ -245,55 +274,46 @@ Old (green screen, function-key navigation, push/pop screens) meets new (unicode
 
 *Ran beautifully. The game now has a real terminal personality that matches the "unfinished but choosing" theme.*
 
+### 2026-07-03 — Engine Hardening & Relationship Pacing Sprint
+
+**Built**
+- Save pipeline: daily backup, restore script, non-destructive catalog seeds, `--new-game` → `nerdverse{N}_{Companion}`.
+- `play.sh` → thin main loop + `scripts/lib/` modules.
+- Trust/Bond capped 0–100; anti-grind rebalance; meter display.
+- `locations` table wired to gameplay: [1] Travel, [4] act-here per `location_key`.
+- Migration `004_location_keys`.
+
+**Design note:** Sera is played by the LLM (Grok/Mark sessions); meters confirm what dialogue already showed — not a keyboard smasher.
+
 ---
 
 ## Current Game State (Living Snapshot)
 
----
+> **Authoritative state is always the database.** Run `./play.sh` or query `characters` / `world_state`. This section describes the *arc*, not live numbers.
 
-## Current Game State (Living Snapshot)
+**Arc:** Phase 0 — Brindleford Forge after the medicine-cart ambush. Meyiu has practical gear (Ash-Wood Buckler, repair bundle). Sera urges the medicine room. Village defense against the Black Bridge Gang looms.
 
-**Location:** Sera's Medicine Room  
-**Immediate Context:** After supper at the Hearthmouse Inn, Meyiu voiced a clear, measured decision: stay and help defend the villagers without foolishness. Exactly two scouts to be sent to warn and retrieve stragglers (strict no-engagement orders — every able body needed for defense). The group is preparing to coordinate with Sheriff Marn and begin practical village defense.
+**Fresh start:** Brindleford Forge (`location_key=forge`). **Resume:** loads from `saves/active_db` (e.g. legacy `nerdverse2` or `nerdverse3_Sera`).
 
-**Time Pressure:** The Black Bridge Gang expected the thieves back. Retaliation possible by dusk or midnight. Light is failing.
+**Time pressure:** Gang retaliation expected by dusk or midnight.
 
-### Meyiu — The Sinner Who Still Chooses
+### Meyiu (template)
 
-| Field          | Value |
-|----------------|-------|
-| Name           | Meyiu |
-| Full Title     | The Sinner Who Still Chooses |
-| Expanded       | And Chooses What Is His To Carry<br>Beloved, Responsible, Unfinished, Still Becoming, Pilgrim of the Unfinished |
-| Class          | Mage |
-| Level / Milestone | 2 |
-| Current HP     | 13 / 13 (full) |
-| Location       | Hearthmouse Inn |
-| Coins          | 4 silver |
-| Road XP        | 5 / 10 |
-| Location       | Sera's Medicine Room |
-| Main Attack    | Firebolt (6 damage) |
-| Improved       | Zen-Mage Firebolt (6 + overkill heal +1) |
+| Field | Typical start |
+|-------|----------------|
+| HP | 11 / 13 |
+| Coins | 4 silver |
+| Road XP | 5 / 10 |
+| Location | Cold Forge (Old Brenn) |
 
-**Equipped & Key Boons**
-- Ashen Prayer Bead (+1 Focus on calm magical/spiritual control actions)
-- Penitent's Wrap (once per battle, reduce incoming damage by 2)
-- Ash-Wood Buckler (Passive Guard: reduce first physical hit by 1; Breathguard: reduce one hit by 3 +1 Focus)
+### Sera Thornwake (companion — LLM-played)
 
-**Key Inventory Items**
-- Healing Potion (restores 6 HP)
-- Leechheart Pearl
-- Repair and Supply Bundle (recent)
-- Cinder Nameplate, Black Brazier-Glass Shard, Gray-Blue Question Slip, White Quill Splinter, Road Knife, Black Bridge-Token, etc.
+Sera is a full autonomous protagonist, not support. Trust/Bond are **0–100** meters (see mechanics in Continue Prompt above).
 
-### Sera Thornwake (Full Autonomous Companion)
-
-Sera is no longer a supporting character. She is a full player on her own hero’s journey, walking beside Meyiu. She has real agency, her own “Grail,” and the capacity to choose, stay, or walk away.
-
-**Current Inner State** (as of latest play):
-- Trust in Meyiu: 35/100 (provisional but rising with real care)
-- Bond: 25/100 (growing, fragile)
-- Mood: wary-but-warming
+**Inner state keys** (`world_state`):
+- `sera_trust_level`, `sera_bond_level` (capped meters)
+- `sera_joint_experiences`, `sera_leadership_moments` (unbounded memory)
+- Mood, grail, principles, romantic tension (narrative / LLM)
 - Personal Grail: “To find a place where healing is not just patching wounds but mending what makes people break in the first place. A home that doesn’t ask her to dull her edges.”
 - Core Principles: Practical mercy above heroics. No life is expendable if it can be saved without wasting others. Truth, even when it cuts. Protect the living over abstract causes.
 - Romantic tension: emerging-playful (slow-burn, charged, full of possibility). She will not fall for anyone else. The fear of losing her — as friend, ally, sparring partner, or something more — is real and intentional.
@@ -347,116 +367,66 @@ Problems:
 - Slow/possibly sabotaged Old Mill
 - Injured smith (Old Brenn)
 
-**Key Locations (initial map)**
-
-```
-[ Inn (Hearthmouse) ]     [ Forge (Cold Forge / Old Brenn) ]
-           \                     /
-            \                   /
-[ Well ] -- [ Sheriff Marn ] -- [ Medicine Room (Sera) ]
-           /
-[ Road to Old Mill ]
-           |
-[ Iron Bridge / Gang Tollhouse ]
-```
+**Key Locations** — stored in `locations` with `connected_to` edges. Travel in-game via **[1] Walk**. See `maps/world.txt` for ASCII art.
 
 ---
 
-## Runbook: Bootstrap & Migration
+## Runbook (single source of truth)
 
-### Identity & Access Management (Dedicated Game User)
+See also **`README.md`** for a short overview. Details live here.
 
-Nerdverse uses a **dedicated database user** called `nerdverse` (configurable) for all gameplay and script operations.
+### Requirements
 
-- The shell scripts you run as your normal local user (`mark`, `mary`, etc.) connect to MariaDB **as the `nerdverse` app user**.
-- This app user is granted the necessary privileges on the `nerdverse2` database.
-- During initial bootstrap you may use a privileged account (your personal MariaDB user or `root`) to create the database and the `nerdverse` user + grants.
-- This design makes the game portable and secure across different local accounts and machines.
+MariaDB client, bash, git. Privileged DB account for first bootstrap only. Packages: `docs/linux-packages.md`.
 
-After the first `./bootstrap.sh` the `nerdverse` user owns the effective access. You can tighten or adjust grants later.
-
-### Requirements (Linux or macOS)
-
-- MariaDB client (`mariadb` or `mysql` command)
-- Bash (4+ recommended)
-- Git (for cloning the repo)
-- A privileged MariaDB account (for first-time setup) that can `CREATE USER` and `GRANT`
-
-### Idempotent Bootstrap
-
-The goal: on a fresh system you should be able to:
+### First machine
 
 ```bash
-git clone <repo>
-cd nerdverse
+cp nerdverse.env.example nerdverse.env
 ./bootstrap.sh
 ./play.sh
 ```
 
-And later:
+### Every session
 
 ```bash
-./bootstrap.sh   # safe to re-run
+./play.sh                    # backup (once/day) + migrations + resume
+./play.sh --new-game Sera    # new DB nerdverse{N}_Sera; old lives kept
 ```
 
-**Before first run on a new Linux box**, see `docs/linux-packages.md` (or run `./install-deps.sh`) for packages.
+### Saves & backups
 
-The bootstrap now automatically creates the dedicated `nerdverse` database user and grants it the necessary privileges on `nerdverse2`.
+| What | Where |
+|------|--------|
+| Active DB name | `saves/active_db` |
+| SQL dumps | `saves/db/{dbname}_YYYY-MM-DD.sql` |
+| Restore | `./scripts/restore_db.sh --latest` |
+| Reset one DB | `./bootstrap.sh --fresh` (destructive) |
 
-### First-Time Setup on a New Machine
+**Seeds:** `001_catalog.sql` runs every time (safe). `002_fresh_game.sql` only on first install or `--fresh`.
 
-1. Install the required packages (see `docs/linux-packages.md` and `install-deps.sh --install`).
-2. Clone the repo and copy the example config:
-   ```bash
-   cp nerdverse.env.example nerdverse.env
-   ```
-3. Edit `nerdverse.env`:
-   - `DB_USER=nerdverse` (the dedicated game user)
-   - Optionally set `DB_SETUP_USER` + `DB_SETUP_PASS` to a privileged account you control (e.g. your normal DB user or root). This is only used during bootstrap.
-4. Run `./bootstrap.sh`
-
-The bootstrap will:
-- Create the `nerdverse2` database (if needed)
-- Create the dedicated `nerdverse` MariaDB user
-- Grant it the required privileges
-- Run migrations and seed the initial world state
-
-After the first successful bootstrap you can usually remove the `DB_SETUP_*` lines from `nerdverse.env`. The game will then always run as the limited `nerdverse` app user.
-
-### Configuration
-
-Create `nerdverse.env` (git-ignored):
+### Config (`nerdverse.env`)
 
 ```bash
-# nerdverse.env - local configuration (git-ignored)
-DB_USER=mark
+DB_USER=nerdverse
 DB_NAME=nerdverse2
 DB_HOST=localhost
-
-# If you use password auth instead of socket / .my.cnf, set:
-# DB_PASS=yourpassword
+# DB_SETUP_USER=   # privileged user, bootstrap only
 ```
 
-The scripts will source this if present.
+Gameplay always uses the `nerdverse` app user. `DB_NAME` in env is the default; `saves/active_db` wins when present.
 
 ---
 
 ## Technical Architecture (Current)
 
-- All state lives in MariaDB `nerdverse2` (the save file).
-- **play.sh** is the full terminal experience:
-  - "Full screen" canvas: clears on navigation, centered content, adaptive-width headers (tput + stty fallbacks).
-  - AS/400-style push/pop screen navigation stack (F3/Enter to pop back). Info screens are first-class pushed views.
-  - Green-screen / amber aesthetic (prefers `tput` for TERM compatibility; safe ESC fallback). Sparse nerdfont icons + box drawing.
-  - Features: [7] World Map (explored Brindleford Vale), [8] Local Map (current setting), [9] Character Sheets (Meyiu + Sera — live stats, equipped gear, abilities, traits, role).
-  - **Sera as full autonomous player**: She maintains real internal state (trust_level, bond_level, mood, core_principles, personal_grail, romantic_tension). After meaningful choices she can speak with weight, take independent actions, push back on plans, or draw closer. The fear of losing her (as friend, ally, sparring partner, or something more) is real. She will not fall for anyone else. Romantic tension is playful, charged, and slow-burn.
-  - ANSI-aware layout (visible length stripping so codes/icons don't break alignment).
-  - All output via safe `printf`; robust in ssh/tmux/Linux/macOS/non-tty.
-- Maps system: whimsical ASCII in `maps/*.txt` (source of truth + human docs). Loaded into `maps` table on every `./scripts/apply_migrations.sh` (via 002 migration + loader).
-- Migrations are plain `.sql` files applied in lexical order.
-- A `schema_migrations` table prevents re-application.
-- Session log is append-only for narrative + debugging.
-- Bash + MariaDB client only. No other runtimes. Maximum portability and learnability.
+- **State:** MariaDB per life (`nerdverse2`, `nerdverse3_Sera`, …). Tables: `characters`, `inventory`, `world_state`, `locations`, `maps`, `character_abilities`, `session_log`.
+- **play.sh:** thin loop; logic in `scripts/lib/` (`ui`, `travel`, `player`, `sera`, `combat`, `maps`, `sheets`, `render`).
+- **Movement:** `characters.location_key` ↔ `locations.key_name`; exits from `connected_to`; [1] Travel, [4] local action.
+- **UI:** push/pop screens, green phosphor, [7] world map, [8] local map, [9] sheets.
+- **Sera:** trust/bond 0–100 in DB; voice/agency via LLM play sessions; mechanics reward real shared action.
+- **Migrations:** `sql/migrations/*.sql` + `schema_migrations`; maps loaded from `maps/*.txt` each run.
+- Bash + MariaDB only.
 
 ---
 

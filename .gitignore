@@ -1,4 +1,9 @@
 # Nerdverse ignores
+saves/db/*.sql
+saves/db/.last_backup_date
+saves/active_db
+saves/session_handoff.md
+!saves/db/.gitkeep
 saves/*.bak
 logs/*.log
 *.swp
