@@ -10,8 +10,14 @@ COMBAT_SERA_LAST=""
 COMBAT_MARK_ACTIVE=0
 
 _prog_char_id() {
-    local name="${1:-Meyiu}"
+    local name="${1:-}"
+    [[ -z "$name" ]] && name=$(party_player_name)
     db_query "SELECT id FROM characters WHERE name='${name}' LIMIT 1;"
+}
+
+_prog_char_id_by_player_flag() {
+    local is_player="${1:-TRUE}"
+    db_query "SELECT id FROM characters WHERE is_player=${is_player} ORDER BY id LIMIT 1;"
 }
 
 # Companion progression snapshot (same mechanics as player — separate track).
@@ -39,7 +45,7 @@ prog_show_sera_progress() {
     while IFS=$'\t' read -r pk pts; do
         [[ -z "$pk" ]] && continue
         tags="${tags}${tags:+, }${pk}:${pts}"
-    done < <(prog_top_practices "Sera Thornwake" 3)
+    done < <(prog_top_practices "$(party_companion_name)" 3)
     [[ -n "$tags" ]] && printf '  %sPractice:%s %s\n' "$DIM" "$RESET" "$tags"
 }
 
@@ -57,7 +63,7 @@ _prog_diminishing() {
 
 # Apply practice to one or more tags: "arcane,practical"
 prog_practice() {
-    local char_name="${1:-Meyiu}"
+    local char_name="${1:-$(party_player_name)}"
     local tags="${2:-}"
     local amount="${3:-1}"
     local cid tag pts gain
@@ -80,7 +86,7 @@ prog_practice() {
 }
 
 prog_practice_get() {
-    local char_name="${1:-Meyiu}"
+    local char_name="${1:-$(party_player_name)}"
     local tag="$2"
     local cid
     cid=$(_prog_char_id "$char_name")
@@ -88,7 +94,7 @@ prog_practice_get() {
 }
 
 prog_top_practices() {
-    local char_name="${1:-Meyiu}"
+    local char_name="${1:-$(party_player_name)}"
     local cid limit="${2:-3}"
     cid=$(_prog_char_id "$char_name")
     echo "SELECT practice_key, points FROM character_practice
@@ -131,7 +137,7 @@ prog_grant_unlock() {
 
 # Road XP overflow → breakthrough flag (not automatic level)
 prog_sync_breakthrough() {
-    local char_name="${1:-Meyiu}"
+    local char_name="${1:-$(party_player_name)}"
     local rxp rxpmax level pending cid
     cid=$(_prog_char_id "$char_name")
     rxp=$(db_query "SELECT road_xp FROM characters WHERE id=${cid};")
@@ -147,7 +153,7 @@ prog_sync_breakthrough() {
 }
 
 prog_breakthrough_ready() {
-    local char_name="${1:-Meyiu}"
+    local char_name="${1:-$(party_player_name)}"
     local cid ready
     cid=$(_prog_char_id "$char_name")
     ready=$(db_query "SELECT breakthrough_pending FROM characters WHERE id=${cid};")
@@ -166,7 +172,7 @@ prog_level_threshold() {
 
 # Level-up ceremony — 3 options shaped by play style; always one shiny toy
 prog_level_up_ceremony() {
-    local char_name="${1:-Meyiu}"
+    local char_name="${1:-$(party_player_name)}"
     local cid level top1 top2 top3
     cid=$(_prog_char_id "$char_name")
     level=$(db_query "SELECT prog_level FROM characters WHERE id=${cid};")
@@ -177,7 +183,7 @@ prog_level_up_ceremony() {
     echo
     draw_screen_header "${ICON_SCROLL}BREAKTHROUGH — ${char_name} LEVEL $(( level + 1 ))"
 
-    if [[ "$char_name" == "Meyiu" ]]; then
+    if party_is_player_char "$char_name"; then
         printf '  %sThe road bends. Not louder — %sdeeper%s.%s\n\n' "$AMBER" "$BOLD" "$RESET" "$RESET"
     else
         printf '  %sSera meets your eyes. She does not perform joy — she %slets you see it%s.%s\n\n' \
@@ -191,7 +197,7 @@ prog_level_up_ceremony() {
     local tactics=$(prog_practice_get "$char_name" "tactics"); tactics="${tactics:-0}"
 
     local o1k o1n o1d o2k o2n o2d o3k o3n o3d
-    if [[ "$char_name" == "Meyiu" ]]; then
+    if party_is_player_char "$char_name"; then
         if [[ $top1 -ge $top2 ]]; then
             o1k="unlock_thermal_recipe"; o1n="Thermal Shock (combo recipe)"; o1d="Inert until Sera primes cold — then devastating."
             o2k="ember_lens"; o2n="Ember Lens (shiny component)"; o2d="Useless alone. Combines with chill residue later."
@@ -204,7 +210,7 @@ prog_level_up_ceremony() {
     else
         if [[ $science -ge 3 || "$(ws_get "mill_status" 2>/dev/null || true)" == "patched" ]]; then
             o1k="sera_field_lab"; o1n="Field Lab Satchel (science)"; o1d="Frozen Ground gains +1 zone turn. Shiny, smells like copper."
-            o2k="chill_residue"; o2n="Chill Residue vial (component)"; o2d="Inert until Meyiu casts fire — then Thermal Shock awakens."
+            o2k="chill_residue"; o2n="Chill Residue vial (component)"; o2d="Inert until the mage casts fire — then Thermal Shock awakens."
             o3k="sera_quiet_rally"; o3n="Quiet Rally (passive)"; o3d="Village fear drops one notch after shared victories."
         else
             o1k="sera_triage_ii"; o1n="Triage Mark II"; o1d="Your next strike after her mark hits harder."
@@ -242,22 +248,28 @@ prog_level_up_ceremony() {
              WHERE id=${cid};"
 
     echo
-    if [[ "$char_name" == "Sera Thornwake" || "$char_name" == "Sera" ]]; then
+    if party_is_companion_char "$char_name"; then
         sera_says "I felt that land. Thank you for being in the room — not just watching."
-        prog_practice "Sera Thornwake" "medicine" 1
+        prog_practice "$(party_companion_name)" "medicine" 1
     else
         printf '  %s%s%s\n' "$GREEN" "Breakthrough recorded. New complexity, not just louder noise." "$RESET"
     fi
     log_narrative "${char_name} breakthrough → level ${new_level}: ${un}"
+    if declare -f tel_balance >/dev/null 2>&1; then
+        tel_balance "breakthrough" "level_${new_level}" "character=${char_name};unlock=${uk}"
+    fi
     read -r -p "Press enter to continue..."
 }
 
 prog_maybe_breakthrough_ceremonies() {
-    if prog_breakthrough_ready "Meyiu"; then
-        prog_level_up_ceremony "Meyiu"
+    local pn cn
+    pn=$(party_player_name)
+    cn=$(party_companion_name)
+    if prog_breakthrough_ready "$pn"; then
+        prog_level_up_ceremony "$pn"
     fi
-    if prog_breakthrough_ready "Sera Thornwake"; then
-        prog_level_up_ceremony "Sera Thornwake"
+    if prog_breakthrough_ready "$cn"; then
+        prog_level_up_ceremony "$cn"
     fi
 }
 
@@ -293,7 +305,7 @@ prog_rank_context_actions() {
         medicine)
             _add_action 100 "Work with Sera — heal & triage the crate"
             _add_action 85  "Inventory medicine (intel + practical practice)"
-            if prog_has_unlock "Sera Thornwake" "bandage_charms" || [[ $(prog_practice_get "Sera Thornwake" "medicine") -ge 5 ]]; then
+            if prog_has_unlock "$(party_companion_name)" "bandage_charms" || [[ $(prog_practice_get "$(party_companion_name)" "medicine") -ge 5 ]]; then
                 _add_action 70 "Sort supplies with Sera (quiet shared work)"
             fi
             ;;
@@ -348,11 +360,18 @@ prog_rank_context_actions() {
 }
 
 prog_get_combat_abilities() {
-    local char_name="${1:-Meyiu}"
-    echo "SELECT ability_key, ability_name, description, uses_remaining, proficiency
-          FROM character_abilities a JOIN characters c ON a.character_id = c.id
-          WHERE c.name='${char_name}' AND a.combat_active = 1
-          ORDER BY a.combat_slot ASC LIMIT 3;" | $MARIADB --silent --skip-column-names
+    local for_player="${1:-player}"
+    if [[ "$for_player" == "companion" ]]; then
+        echo "SELECT ability_key, ability_name, description, uses_remaining, proficiency
+              FROM character_abilities a JOIN characters c ON a.character_id = c.id
+              WHERE c.is_player=FALSE AND a.combat_active = 1
+              ORDER BY a.combat_slot ASC LIMIT 3;" | $MARIADB --silent --skip-column-names
+    else
+        echo "SELECT ability_key, ability_name, description, uses_remaining, proficiency
+              FROM character_abilities a JOIN characters c ON a.character_id = c.id
+              WHERE c.is_player=TRUE AND a.combat_active = 1
+              ORDER BY a.combat_slot ASC LIMIT 3;" | $MARIADB --silent --skip-column-names
+    fi
 }
 
 prog_combo_check() {
@@ -391,16 +410,16 @@ prog_sera_combat_turn() {
     COMBAT_SERA_LAST=""
     [[ $enemy_hp -le 0 ]] && return 0
 
-    local science=$(prog_practice_get "Sera Thornwake" "science"); science="${science:-0}"
+    local science=$(prog_practice_get "$(party_companion_name)" "science"); science="${science:-0}"
     local roll=$(( RANDOM % 100 ))
 
     if [[ $science -ge 2 || "$(ws_get "mill_status")" == "patched" ]] && [[ $roll -lt 45 ]]; then
         COMBAT_SERA_LAST="sera_frozen_ground"
         COMBAT_ZONE="frozen"
         echo -e "${CYAN}Sera lays Frozen Ground — the air crystallizes.${RESET}"
-        prog_practice "Sera Thornwake" "science,medicine" 1
+        prog_practice "$(party_companion_name)" "science,medicine" 1
         db_exec "UPDATE character_abilities SET proficiency = COALESCE(proficiency,0)+1
-                 WHERE character_id = (SELECT id FROM characters WHERE name='Sera Thornwake')
+                 WHERE character_id = (SELECT id FROM characters WHERE is_player=FALSE LIMIT 1)
                  AND ability_key='sera_frozen_ground';"
         return 0
     fi
@@ -409,7 +428,7 @@ prog_sera_combat_turn() {
         COMBAT_SERA_LAST="sera_triage_mark"
         COMBAT_MARK_ACTIVE=1
         echo -e "${CYAN}Sera marks the foe — Triage focus.${RESET}"
-        prog_practice "Sera Thornwake" "medicine,tactics" 1
+        prog_practice "$(party_companion_name)" "medicine,tactics" 1
         return 0
     fi
 
@@ -418,22 +437,24 @@ prog_sera_combat_turn() {
 
 # Backfill existing saves after migration
 prog_normalize_saves() {
-    local cid_m cid_s rxp
-    cid_m=$(_prog_char_id "Meyiu")
-    cid_s=$(_prog_char_id "Sera Thornwake")
+    local cid_m cid_s rxp pn cn
+    pn=$(party_player_name)
+    cn=$(party_companion_name)
+    cid_m=$(_prog_char_id "$pn")
+    cid_s=$(_prog_char_id "$cn")
     [[ -z "$cid_m" ]] && return 0
 
-    prog_sync_breakthrough "Meyiu"
-    prog_sync_breakthrough "Sera Thornwake"
+    prog_sync_breakthrough "$pn"
+    prog_sync_breakthrough "$cn"
 
     # Mill + sheriff play → retro practice
     if [[ "$(ws_get "mill_status")" == "patched" ]]; then
-        prog_practice "Meyiu" "practical,strength" 4
-        prog_practice "Sera Thornwake" "science,medicine" 5
-        prog_grant_unlock "Sera Thornwake" "chill_residue" "component" "Chill Residue Vial" \
+        prog_practice "$pn" "practical,strength" 4
+        prog_practice "$(party_companion_name)" "science,medicine" 5
+        prog_grant_unlock "$(party_companion_name)" "chill_residue" "component" "Chill Residue Vial" \
             "Harvested from mill mist. Inert until fire meets it." 1 "mill_patched"
         local sp
-        sp=$(prog_practice_get "Sera Thornwake" "science")
+        sp=$(prog_practice_get "$(party_companion_name)" "science")
         if [[ ${sp:-0} -ge 5 ]]; then
             db_exec "UPDATE characters SET road_xp = GREATEST(road_xp, 10), road_xp_max = 10, breakthrough_pending = 1
                      WHERE id=${cid_s} AND breakthrough_pending = 0 AND prog_level = 1;"
@@ -447,7 +468,7 @@ prog_normalize_saves() {
 
     # Shared victories → tactics practice
     if [[ "$(ws_get "last_major_event")" == *"defeated"* ]]; then
-        prog_practice "Meyiu" "arcane,tactics" 2
-        prog_practice "Sera Thornwake" "tactics,medicine" 2
+        prog_practice "$pn" "arcane,tactics" 2
+        prog_practice "$(party_companion_name)" "tactics,medicine" 2
     fi
 }

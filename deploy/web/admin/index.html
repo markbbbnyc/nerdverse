@@ -60,6 +60,11 @@
   </section>
 
   <section>
+    <h2>BALANCE SIGNALS (tune combat & progression)</h2>
+    <table id="balance"><tbody></tbody></table>
+  </section>
+
+  <section>
     <h2>PILGRIM NAMES REGISTERED</h2>
     <table id="players"><tbody></tbody></table>
   </section>
@@ -105,11 +110,17 @@
           kpi(s.wizard_completions ?? 0, 'LIVES REGISTERED'),
           kpi((s.completion_rate_pct ?? 0) + '%', 'WIZARD COMPLETION'),
           kpi(s.session_ends ?? 0, 'CLEAN SIGN-OFFS'),
-          kpi(s.total_events ?? 0, 'TOTAL EVENTS')
+          kpi(s.total_events ?? 0, 'TOTAL EVENTS'),
+          kpi((s.combat_win_rate_pct ?? 0) + '%', 'COMBAT WIN RATE'),
+          kpi(s.avg_combat_damage_taken ?? 0, 'AVG DMG TAKEN / FIGHT'),
+          kpi(s.avg_combat_rounds ?? 0, 'AVG ROUNDS / FIGHT')
         );
 
         const ct = document.querySelector('#choices tbody');
         ct.replaceChildren(...(s.top_choices || []).map(c => row(c.key, c.count)));
+
+        const bt = document.querySelector('#balance tbody');
+        bt.replaceChildren(...(s.balance_signals || []).map(b => row(b.key, b.count)));
 
         const pt = document.querySelector('#players tbody');
         pt.replaceChildren(...(s.top_player_names || []).map(p => row(p.key, p.count)));

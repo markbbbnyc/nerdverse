@@ -4,12 +4,16 @@ Browser → **nginx** → **ttyd** → **nerdverse-cage.sh** → isolated `nerdv
 
 Your author Life-2 save (`nerdverse2`, `saves/active_db`) **never** leaves your dev machine.
 
+## Content pipeline
+
+Engine + world catalog ship on every deploy; your Life-2 save does not. See **`docs/content-pipeline.md`** for DEV + LLM DM workflow, seed profiles, and telemetry-driven balance.
+
 ## Two lanes, one repo
 
 | Lane | Host | Database | Seed |
 |------|------|----------|------|
 | **Author / dev** | Your Mac | `nerdverse2`, `nerdverse{N}_Companion` | `sql/seeds/002_fresh_game.sql` (your checkpoint) |
-| **Public terminal** | Ubuntu server | `nerdverse_web_{hex}` per tab | `sql/seeds/003_public_terminal_fresh.sql` (anonymous start) |
+| **Public terminal** | Ubuntu server | `nerdverse_web_{hex}` per tab | `sql/seeds/profiles/public_arc_start.sql` (full arc ch.1) |
 
 Shared template DB `nerdverse_public` holds **schema only** — no playable characters.
 

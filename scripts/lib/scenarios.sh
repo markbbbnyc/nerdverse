@@ -57,7 +57,7 @@ scenario_mill() {
     echo
     sera_says "Sabotage on the wheel. Rot in the grain. Pick your poison — we can't fix everything in one breath."
     echo
-    printf '%sWhat does Meyiu do?%s\n' "$BOLD$GREEN" "$RESET"
+    printf '%sWhat does %s do?%s\n' "$BOLD$GREEN" "$(party_player_name)" "$RESET"
     if _player_has_item "repair_bundle"; then
         printf '  %s[1]%s Use the Repair Bundle on the axle (save the wheel)\n' "$GREEN" "$RESET"
     else
@@ -79,28 +79,28 @@ scenario_mill() {
             _consume_item "repair_bundle"
             ws_set "mill_status" "patched"
             ws_set "brindleford_food_supply" "stabilizing"
-            ws_set "last_major_event" "Meyiu used the repair bundle to fix sabotaged mill axle."
+            ws_set "last_major_event" "$(party_player_name) used the repair bundle to fix sabotaged mill axle."
             _bump_preparedness
-            log_narrative "Meyiu repaired the sabotaged mill wheel with the oilcloth kit."
+            log_narrative "$(party_player_name) repaired the sabotaged mill wheel with the oilcloth kit."
             echo
             echo "Oil, cord, and steady hands. The wheel finds its rhythm again."
             sera_says "Practical. That's the whole sermon."
             sera_apply_bond_change 1 2 1
             if declare -f prog_practice >/dev/null 2>&1; then
-                prog_practice "Meyiu" "practical,strength" 3
-                prog_practice "Sera Thornwake" "science,medicine" 4
-                prog_grant_unlock "Sera Thornwake" "chill_residue" "component" "Chill Residue Vial" \
+                prog_practice "$(party_player_name)" "practical,strength" 3
+                prog_practice "$(party_companion_name)" "science,medicine" 4
+                prog_grant_unlock "$(party_companion_name)" "chill_residue" "component" "Chill Residue Vial" \
                     "Harvested from mill mist. Inert until fire meets it." 1 "mill_repair"
                 prog_sera_milestone "Science isn't abstract for her." "She measured the mist while you turned the wheel." "curious-warm"
-                db_exec "UPDATE characters SET road_xp = road_xp + 3 WHERE name='Sera Thornwake';"
-                prog_sync_breakthrough "Sera Thornwake"
+                db_exec "UPDATE characters SET road_xp = road_xp + 3 WHERE is_player=FALSE;"
+                prog_sync_breakthrough "$(party_companion_name)"
             fi
             ;;
         2)
             ws_set "mill_status" "reported"
             ws_set "last_major_event" "Mill sabotage reported to Sheriff Marn."
             _bump_preparedness
-            log_narrative "Meyiu reported mill sabotage to the Sheriff."
+            log_narrative "$(party_player_name) reported mill sabotage to the Sheriff."
             echo
             echo "Marn's face hardens. \"I'll post a watch. You did right.\""
             sera_exercise_agency "defend measured scouts village"
@@ -109,7 +109,7 @@ scenario_mill() {
             ws_set "mill_status" "grain_burned"
             ws_set "brindleford_food_supply" "tight_but_safe"
             ws_set "last_major_event" "Rotten mill grain burned to halt spread."
-            log_narrative "Meyiu burned the rotting grain at the Old Mill."
+            log_narrative "$(party_player_name) burned the rotting grain at the Old Mill."
             echo
             echo "Smoke stings. A quarter of the store is ash. The rest might keep."
             sera_says "Ugly math. I'd do it again if I had to."
@@ -153,8 +153,8 @@ scenario_sheriff() {
     case "$choice" in
         1)
             ws_set "brindleford_preparedness" "Medium"
-            ws_set "last_major_event" "Meyiu coordinated dusk watch with Sheriff Marn and Sera."
-            log_narrative "Meyiu set a dusk watch rotation with Marn; Sera assigned triage fallback."
+            ws_set "last_major_event" "$(party_player_name) coordinated dusk watch with Sheriff Marn and Sera."
+            log_narrative "$(party_player_name) set a dusk watch rotation with Marn; Sera assigned triage fallback."
             echo
             echo "Marn nods. \"Two on the mill path, one on the inn road. Sera's signal if anyone bleeds.\""
             sera_exercise_agency "defend measured scouts village"
@@ -164,7 +164,7 @@ scenario_sheriff() {
             if _player_has_item "black_bridge_token" || _player_has_item "Black Bridge-Token"; then
                 ws_set "black_bridge_gang_status" "Retaliation likely by dusk; Toll-Saint may send a probe first."
                 ws_set "bridge_intel" "Probe likely before main push; scout patrols already short-handed."
-                ws_set "last_major_event" "Meyiu pressed Marn on gang timeline using captured token."
+                ws_set "last_major_event" "$(party_player_name) pressed Marn on gang timeline using captured token."
                 log_narrative "Sheriff Marn read the token marks — retaliation probe expected by dusk."
                 echo
                 echo "Marn's jaw tightens. \"Probe first. Then punishment. We have hours, not days.\""
@@ -178,7 +178,7 @@ scenario_sheriff() {
         3)
             ws_set "medicine_decoy_set" "yes"
             ws_set "last_major_event" "Decoy posted at medicine room to draw gang attention."
-            log_narrative "Meyiu approved Sera's decoy plan at the medicine room."
+            log_narrative "$(party_player_name) approved Sera's decoy plan at the medicine room."
             echo
             echo "Sera rigs a lantern and moves the crate shadow. \"If they come hungry for medicine, they come to us.\""
             sera_exercise_agency "medicine room triage decoy"
@@ -192,7 +192,7 @@ scenario_sheriff() {
             ;;
         4)
             echo "You step into the lane. Boots answer from the wrong direction."
-            log_narrative "Meyiu rode out from the Sheriff's office seeking contact."
+            log_narrative "$(party_player_name) rode out from the Sheriff's office seeking contact."
             start_encounter "Black Bridge Scout" 14
             return 0
             ;;
@@ -215,13 +215,13 @@ scenario_bridge_on_arrival() {
         ws_set "bridge_arrival_scouted" "yes"
         if [[ $(( RANDOM % 100 )) -lt 42 ]]; then
             echo "A picket breaks cover — he saw you the moment you stepped into the open."
-            log_narrative "Black Bridge picket spotted Meyiu on approach to Iron Bridge."
+            log_narrative "Black Bridge picket spotted $(party_player_name) on approach to Iron Bridge."
             start_encounter "Black Bridge Picket" 12
             return 0
         fi
         echo "You freeze. A patrol passes on the far bank. They didn't see you. Yet."
         ws_set "bridge_alert_level" "heightened"
-        log_narrative "Meyiu approached Iron Bridge unseen — for now."
+        log_narrative "$(party_player_name) approached Iron Bridge unseen — for now."
     elif [[ "$alert" == "heightened" && $(( RANDOM % 100 )) -lt 25 ]]; then
         echo "This time the river carries laughter — and a scout turning your way."
         start_encounter "Black Bridge Scout" 14
@@ -245,7 +245,7 @@ scenario_bridge_action() {
         1)
             ws_set "bridge_intel" "9-12 fighters; Toll-Saint champion; Garran Pike leads"
             ws_set "bridge_alert_level" "watched"
-            log_narrative "Meyiu and Sera watched the Iron Bridge gang from cover."
+            log_narrative "$(party_player_name) and Sera watched the Iron Bridge gang from cover."
             echo
             echo "You count nine visible fighters, maybe more inside. A shield-man the size of a door."
             sera_says "Now we know the price of walking in. We don't pay it today."
@@ -253,12 +253,12 @@ scenario_bridge_action() {
             ;;
         2)
             echo "Gravel shifts. Someone shouts. Steel answers."
-            log_narrative "Meyiu tested the bridge approach — contact forced."
+            log_narrative "$(party_player_name) tested the bridge approach — contact forced."
             start_encounter "Black Bridge Scout" 14
             ;;
         3)
             echo "You fade back into the treeline. The bridge keeps its secrets."
-            log_narrative "Meyiu withdrew from Iron Bridge before contact."
+            log_narrative "$(party_player_name) withdrew from Iron Bridge before contact."
             sera_says "Smart. Curiosity isn't courage if it gets us killed for free."
             ;;
         *)

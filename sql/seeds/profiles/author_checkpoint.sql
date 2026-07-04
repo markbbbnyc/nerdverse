@@ -1,7 +1,8 @@
--- 002_fresh_game.sql — LEGACY PATH (kept for reference)
--- Canonical author checkpoint: sql/seeds/profiles/author_checkpoint.sql
--- Public arc start:          sql/seeds/profiles/public_arc_start.sql
--- apply_migrations.sh selects profile via NERDVERSE_SEED_PROFILE / NERDVERSE_PUBLIC_FRESH_SEED.
+-- profiles/author_checkpoint.sql
+-- Author Life-2 checkpoint (local DEV only). Personal story state — never on public servers.
+-- Public players use profiles/public_arc_start.sql (full arc from chapter 1).
+-- Applied ONLY on first install or an explicit --fresh reset (see apply_migrations.sh).
+-- Never run on routine play.sh / migration passes — it would overwrite a live save.
 
 -- === MEYIU ===
 INSERT INTO characters (name, title, class, current_hp, max_hp, coins_silver, road_xp, road_xp_max, location, is_player, notes)

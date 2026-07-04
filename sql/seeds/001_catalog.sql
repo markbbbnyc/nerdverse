@@ -1,26 +1,25 @@
 -- 001_catalog.sql
--- Reference / world catalog data. Safe to re-apply on every migration run.
--- Does NOT touch player progress (HP, location, inventory quantities, world story state).
+-- World catalog: locations, maps hooks, state keys. Neutral text — any pilgrim.
+-- Safe to re-apply on every migration (DEV + public). Does NOT overwrite live story values.
+-- New lore/locations added here flow to all environments on deploy.
 
--- === LOCATIONS (static world graph — preserve visited flag) ===
 INSERT INTO locations (key_name, display_name, description, connected_to, danger_level, visited)
 VALUES
-('forge', 'Cold Forge (Old Brenn)', 'The forge where Meyiu just bought the Ash-Wood Buckler and repair bundle. Old Brenn is injured.', 'inn,sheriff,medicine', 1, FALSE),
-('medicine', 'Sera''s Medicine Room', 'Where the recovered medicine crate is stored. Sera controls supplies and will criticize waste.', 'forge,sheriff', 0, FALSE),
-('sheriff', 'Sheriff Marn''s Office', 'Tired but armed. Can muster a few villagers. Bandit interrogation and village defense planning happen here.', 'forge,medicine,inn', 1, FALSE),
-('inn', 'Hearthmouse Inn', 'Food, rest, rumors, lodging. Meyiu has a meal and lodging token from Sheriff Marn.', 'sheriff,forge', 0, FALSE),
-('mill', 'The Old Mill', 'Food supply threat. Wheel turns too slowly. Possible rot, sabotage, or other problem.', 'medicine', 2, FALSE),
-('bridge', 'Iron Bridge / Gang Tollhouse', 'Black Bridge Gang base. 9-12 fighters led by Garran Pike. Champion: Toll-Saint.', 'mill', 5, FALSE)
+('forge', 'Cold Forge (Old Brenn)', 'The village forge. Old Brenn crafts practical gear; ash-wood bucklers are prized here.', 'inn,sheriff,medicine', 1, FALSE),
+('medicine', 'Medicine Room', 'Field supplies and triage. The companion often leads here when crates or wounds demand attention.', 'forge,sheriff', 0, FALSE),
+('sheriff', 'Sheriff Marn''s Office', 'Tired but armed. Village defense, bandit interrogation, and dusk watches are planned here.', 'forge,medicine,inn', 1, FALSE),
+('inn', 'Hearthmouse Inn', 'Food, rest, rumors, lodging. A meal and a roof before the harder roads.', 'sheriff,forge', 0, FALSE),
+('mill', 'The Old Mill', 'Food supply threat. The wheel turns too slowly — rot, sabotage, or worse.', 'medicine', 2, FALSE),
+('bridge', 'Iron Bridge / Gang Tollhouse', 'Black Bridge Gang territory. Led by Garran Pike. Champion: Toll-Saint.', 'mill', 5, FALSE)
 ON DUPLICATE KEY UPDATE
     display_name = VALUES(display_name),
     description = VALUES(description),
     connected_to = VALUES(connected_to),
     danger_level = VALUES(danger_level);
 
--- === WORLD STATE KEYS (ensure exist on older saves — never overwrite values) ===
 INSERT IGNORE INTO world_state (state_key, value) VALUES
-('sera_trust_level', '35'),
-('sera_bond_level', '25'),
+('sera_trust_level', '20'),
+('sera_bond_level', '15'),
 ('sera_joint_experiences', '0'),
 ('sera_leadership_moments', '0'),
 ('sera_last_action', ''),

@@ -42,7 +42,7 @@ Separate deploy lane for anonymous one-shot lives — **not** your author save.
 ./deploy/spin-up.sh root@YOUR_SERVER_IP
 ```
 
-Each browser tab gets an isolated `nerdverse_web_*` database (seed `003_public_terminal_fresh.sql`). Full ops runbook: **`deploy/README.md`**.
+Each browser tab gets an isolated `nerdverse_web_*` database (seed `003_public_terminal_fresh.sql`). Full ops runbook: **`deploy/README.md`**. Content pipeline (DEV → public): **`docs/content-pipeline.md`**.
 
 | Command | Purpose |
 |---------|---------|

@@ -109,7 +109,7 @@ cc_finalize_registration() {
     ws_set "player_display_name" "$player"
     ws_set "companion_display_name" "$companion"
     ws_set "companion_surname" "$surname"
-    ws_set "game_initialized" "public_terminal_life"
+    ws_set "game_initialized" "public_arc_start"
 
     log_narrative "New public-terminal life: ${player} with companion ${companion} ${surname}."
     export NERDVERSE_PLAYER_NAME="$player"

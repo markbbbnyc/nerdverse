@@ -64,6 +64,7 @@ source "${LIB_DIR}/sheets.sh"
 source "${LIB_DIR}/render.sh"
 source "${LIB_DIR}/handoff.sh"
 source "${LIB_DIR}/character_create.sh"
+source "${LIB_DIR}/mode.sh"
 source "${LIB_DIR}/party.sh"
 source "${LIB_DIR}/telemetry.sh"
 
@@ -99,7 +100,7 @@ prog_normalize_saves
 SCREEN_STACK=("main")
 
 # Breakthrough ceremonies if road XP threshold crossed (play-shaped unlocks)
-if [[ -t 0 && "${NERDVERSE_PUBLIC_TERMINAL:-}" != "1" ]]; then
+if mode_allows_breakthrough_on_start && [[ -t 0 ]]; then
     prog_maybe_breakthrough_ceremonies
 fi
 
@@ -119,7 +120,7 @@ handle_local_action() {
     case "${LOCATION_KEY}" in
         medicine)
             db_exec "UPDATE world_state SET value = 'Working in the medicine room with Sera.' WHERE state_key = 'last_major_event';"
-            log_narrative "Meyiu worked with Sera in the medicine room."
+            log_narrative "$(party_player_name) worked with $(party_companion_short) in the medicine room."
             sera_exercise_agency "follow medicine room action"
             heal_player
             read -r -p "Press enter..."
@@ -129,7 +130,7 @@ handle_local_action() {
             echo
             echo "You take a modest meal. The common room hums with worry about the gang."
             sera_says "Eat. Listen. But don't mistake rest for being done."
-            log_narrative "Meyiu took a meal at the Hearthmouse Inn and listened to village rumors."
+            log_narrative "$(party_player_name) took a meal at the Hearthmouse Inn and listened to village rumors."
             read -r -p "Press enter..."
             ;;
         forge)
@@ -138,7 +139,7 @@ handle_local_action() {
             echo "  Passive Guard: reduce first physical hit by 1 (once/round)"
             echo "  Breathguard: once per battle, reduce one hit by 3 + gain +1 Focus"
             echo "  It still smells faintly of the forge and the road."
-            log_narrative "Meyiu studied the Ash-Wood Buckler with care."
+            log_narrative "$(party_player_name) studied the Ash-Wood Buckler with care."
             read -r -p "Press enter..."
             ;;
         mill)   scenario_mill ;;
@@ -229,7 +230,7 @@ while true; do
                     fi
                     handoff_path=$(handoff_write)
                     echo "Save preserved in ${DB_NAME} ($(game_db_label "$DB_NAME"))."
-                    echo "Meyiu stands at $(ui_unescape_sql "${LOCATION}")."
+                    echo "$(party_player_name) stands at $(ui_unescape_sql "${LOCATION}")."
                     echo "LLM handoff: ${handoff_path}"
                     exit 0
                     ;;

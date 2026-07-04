@@ -34,3 +34,18 @@ party_player_id() {
 party_companion_id() {
     db_query "SELECT id FROM characters WHERE is_player=FALSE ORDER BY id LIMIT 1;"
 }
+
+party_is_player_char() {
+    local n="${1:-}"
+    [[ -n "$n" && "$n" == "$(party_player_name)" ]]
+}
+
+party_is_companion_char() {
+    local n="${1:-}" cn
+    cn=$(party_companion_name)
+    [[ -n "$n" && ( "$n" == "$cn" || "$n" == "$(party_companion_short)" ) ]]
+}
+
+party_companion_label() {
+    party_companion_short
+}

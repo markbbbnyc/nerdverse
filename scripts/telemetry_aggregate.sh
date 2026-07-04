@@ -39,9 +39,14 @@ session_starts = 0
 session_ends = 0
 wizard_complete = 0
 wizard_abandon = 0
+combat_wins = 0
+combat_losses = 0
+combat_damage = []
+combat_rounds = []
 choices = collections.Counter()
 screens = collections.Counter()
 players = collections.Counter()
+balance_events = collections.Counter()
 recent = []
 
 for e in events:
@@ -71,6 +76,27 @@ for e in events:
         sc = e.get("screen") or "?"
         choices[f"{sc}:{ch}"] += 1
         screens[sc] += 1
+    elif et == "combat_end":
+        outcome = e.get("choice") or ""
+        balance_events[f"combat:{outcome}"] += 1
+        if outcome == "victory":
+            combat_wins += 1
+        elif outcome == "defeat":
+            combat_losses += 1
+        detail = e.get("detail") or ""
+        for part in detail.split(";"):
+            if part.startswith("damage_taken="):
+                try:
+                    combat_damage.append(int(part.split("=", 1)[1]))
+                except ValueError:
+                    pass
+            if part.startswith("rounds="):
+                try:
+                    combat_rounds.append(int(part.split("=", 1)[1]))
+                except ValueError:
+                    pass
+    elif et in ("combat_start", "practice_gain", "road_xp", "breakthrough"):
+        balance_events[et] += 1
 
     recent.append(e)
 
@@ -91,6 +117,12 @@ stats = {
     "top_choices": top(choices),
     "top_screens": top(screens),
     "top_player_names": top(players, 20),
+    "combat_wins": combat_wins,
+    "combat_losses": combat_losses,
+    "combat_win_rate_pct": round(100 * combat_wins / (combat_wins + combat_losses), 1) if (combat_wins + combat_losses) else 0,
+    "avg_combat_damage_taken": round(sum(combat_damage) / len(combat_damage), 1) if combat_damage else 0,
+    "avg_combat_rounds": round(sum(combat_rounds) / len(combat_rounds), 1) if combat_rounds else 0,
+    "balance_signals": top(balance_events, 15),
     "recent_events": recent[:25],
 }
 

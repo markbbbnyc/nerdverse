@@ -39,13 +39,21 @@ tel_event() {
     } >> "${TELEMETRY_FILE}" 2>>"${TELEMETRY_DIR}/.write-errors.log" || true
 
     case "$event_type" in
-        session_start|session_end|wizard_complete|wizard_abandon)
+        session_start|session_end|wizard_complete|wizard_abandon|combat_end|breakthrough)
             tel_refresh_stats_sync
             ;;
-        menu_choice)
+        menu_choice|combat_start|practice_gain|road_xp)
             tel_refresh_stats_async
             ;;
     esac
+}
+
+# Balance telemetry — combat outcomes, XP, practice (for tuning progression/combat).
+tel_balance() {
+    local event_type="${1:-balance}"
+    local outcome="${2:-}"
+    local detail="${3:-}"
+    tel_event "$event_type" "balance" "$outcome" "$detail"
 }
 
 tel_refresh_stats_sync() {

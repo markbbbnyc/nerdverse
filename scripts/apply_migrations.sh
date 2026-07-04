@@ -23,8 +23,8 @@ source "${SCRIPT_DIR}/db.sh"
 MIGRATIONS_DIR="${PROJECT_ROOT}/sql/migrations"
 SEEDS_DIR="${PROJECT_ROOT}/sql/seeds"
 CATALOG_SEED="001_catalog.sql"
-FRESH_SEED="002_fresh_game.sql"
-PUBLIC_FRESH_SEED="003_public_terminal_fresh.sql"
+FRESH_SEED="profiles/author_checkpoint.sql"
+PUBLIC_FRESH_SEED="profiles/public_arc_start.sql"
 
 FRESH_MODE=0
 QUIET=0
