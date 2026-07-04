@@ -48,7 +48,7 @@ Chronological deploy and engine notes. Author Life-2 save (`nerdverse2`) is neve
 - `README.md` — public terminal pointers
 - This file
 
-**Git:** `e426bfb` on `main` — pushed to `https://github.com/markbbbnyc/nerdverse.git`
+**Git:** `113362d` on `main` (UX + docs: `e426bfb`) — `https://github.com/markbbbnyc/nerdverse.git`
 
 ---
 
