@@ -44,7 +44,11 @@ Chronological deploy and engine notes. Author Life-2 save (`nerdverse2`) is neve
 ### Docs added/updated
 - `docs/content-pipeline.md` — DEV → staging → PRD content flow
 - `deploy/README.md` — ops runbook
+- `docs/nerdverse-companion.md` — continue-prompt + public lane status
+- `README.md` — public terminal pointers
 - This file
+
+**Git:** `e426bfb` on `main` — pushed to `https://github.com/markbbbnyc/nerdverse.git`
 
 ---
 
@@ -57,4 +61,6 @@ Chronological deploy and engine notes. Author Life-2 save (`nerdverse2`) is neve
 
 ---
 
-*Next session candidates: Trust/Bond decay feedback after travel, companion channel polish, Pike hunt scenario, `spin-up` git ref guard when install tree has no `.git`.*
+*Next session candidates: Trust/Bond decay feedback after travel, companion channel polish, Pike hunt scenario, TLS on public host.*
+
+*Session closed 2026-07-04.*
