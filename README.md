@@ -42,7 +42,7 @@ Separate deploy lane for anonymous one-shot lives — **not** your author save.
 ./deploy/spin-up.sh root@YOUR_SERVER_IP
 ```
 
-Each browser tab gets an isolated `nerdverse_web_*` database (seed `003_public_terminal_fresh.sql`). Full ops runbook: **`deploy/README.md`**. Content pipeline (DEV → public): **`docs/content-pipeline.md`**.
+Each browser tab gets an isolated `nerdverse_web_*` database (profile `sql/seeds/profiles/public_arc_start.sql`). Full ops runbook: **`deploy/README.md`**. Content pipeline: **`docs/content-pipeline.md`**. Session changelog: **`docs/updates.md`**.
 
 | Command | Purpose |
 |---------|---------|
@@ -63,6 +63,8 @@ maps/                   # ASCII map sources → loaded into DB
 deploy/                 # Public terminal: spin-up, nginx, ttyd, sandbox
 saves/db/               # Local MariaDB dumps (git-ignored)
 docs/nerdverse-companion.md   # Diary, runbook, lore, roadmap
+docs/updates.md               # Deploy & engine session changelog
+docs/content-pipeline.md      # DEV → public content flow
 deploy/README.md        # Public server install & security model
 ```
 

@@ -29,13 +29,16 @@ Public players get the **same storyline arc** (forge → medicine → sheriff �
    - New items/abilities → migrations or `003_progression_catalog.sql`
    - Schema changes → `sql/migrations/NNN_name.sql`
 3. **Test migrations** `./scripts/apply_migrations.sh` (preserves your save).
-4. **Test public path** locally:
+4. **Test public path** locally (or playtest on server via `/play/`):
    ```bash
    export NERDVERSE_PUBLIC_TERMINAL=1
+   export NERDVERSE_COMPACT=1
    export NERDVERSE_ACTIVE_DB_FILE=/tmp/test_web/active_db
+   export NERDVERSE_SESSION_DIR=/tmp/test_web
    mkdir -p /tmp/test_web
-   # run registration + play.sh --public-terminal in test DB
+   ./deploy/sandbox/nerdverse-cage.sh   # or play.sh --public-terminal after wizard
    ```
+   Checklist: random names (not Meyiu/Sera), `nerdverse_web_*` in session `active_db`, forge ledger, telemetry `wizard_complete` event.
 5. **Commit** engine + catalog changes (not `saves/`, not `nerdverse.env`).
 6. **Promote** `./deploy/spin-up.sh root@STAGING` → UAT → PRD (same git ref).
 

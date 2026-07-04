@@ -45,13 +45,16 @@ The game is designed to feel like a favorite never-ending series: ongoing charac
 - Long-term: JRPG tactical combat (FF/Diablo style), character progression, possible multi-player hosted worlds.
 - Current focus (B): Build the "physics" and canvas (combat, action systems, extensible characters) while keeping the current run sacred and meaningful. Meta/emo/philosophical side + mechanical frame together.
 
-**What was just implemented (2026-07-03 — play/build session):**
-- **AS/400 operator UI:** screen IDs, ledger menu, PF-keys, compact mode for ≤30-row terminals (`NERDVERSE_COMPACT=1`).
-- **Progression system (`005_progression.sql`):** practice tags, breakthrough levels, 2–3 combat actives, combos, inert shiny components.
-- **Sera in combat:** ally avatar cards (Meyiu │ Sera │ Foe), autonomous support turns, `IN THE ROOM` milestones.
-- **Scenarios:** `scenario_sheriff` (defense planning, not repeat scout ambush), mill/bridge stakes, Pike hunt council hook.
-- **DM play mode:** chat-room banter with Grok as DM + Sera; `session_handoff.md` includes DM resume prompt.
-- **Save safety:** daily backup, `restore_db.sh`, multi-life DBs, modular `scripts/lib/*.sh`.
+**What was just implemented (2026-07-04 — public terminal close-out):**
+- **Unified engine:** `mode.sh`, `party.sh`, seed profiles (`public_arc_start` vs `author_checkpoint`), balance telemetry.
+- **Session isolation:** `nerdverse_web_*` per browser tab; cage + `play.sh --public-terminal` refuse author/shared DBs.
+- **Deploy:** `./deploy/spin-up.sh root@HOST` — idempotent Ubuntu install; live at `24.144.103.2` (`/play/`, `/admin/`).
+- **Public UX fixes:** NEW PILGRIM registration banner, ASCII-safe headers, DB-forge progress lines, no backup warning on public tabs.
+- **Telemetry:** write-path fix, dashboard refresh dedupe, admin balance KPIs.
+- **Docs:** `docs/content-pipeline.md`, `docs/updates.md`, `deploy/README.md` runbook.
+
+**Prior session (2026-07-03 — play/build):**
+- AS/400 operator UI, progression/combos, Sera combat ally cards, scenarios, DM handoff, save safety.
 
 **Life 2 (legacy) — session paused at (2026-07-03):**
 - **Chapter:** *The Morning After the Toll*
@@ -63,12 +66,12 @@ The game is designed to feel like a favorite never-ending series: ongoing charac
 - **Village:** mill patched, food stabilizing, preparedness **High**, families evacuated then secured
 - **Black Bridge:** Toll-Saint wounded/retreated; Garran Pike withdrew — **hunt authorized before Meyiu/Sera depart the vale**
 
-**Public terminal deploy (stretch goal — `deploy/` lane):**
-- Ubuntu: `./deploy/bootstrap-remote.sh root@24.144.103.2` → `/opt/nerdverse-public`
+**Public terminal (`deploy/` lane — live):**
+- Spin-up: `./deploy/spin-up.sh root@24.144.103.2` → `/opt/nerdverse-public`
 - nginx landing + ttyd `/play/` sandbox (no shell escape)
-- Per-session DB `nerdverse_web_*` + character wizard; **does not touch local Life 2**
-- Idempotent updates: re-run `deploy/install-server.sh` on server
-- See **`deploy/README.md`**
+- Per-session DB `nerdverse_web_*` + one-shot registration (`.` to confirm random names)
+- Full Brindleford arc from ch.1 (`profiles/public_arc_start.sql`); **does not touch local Life 2**
+- Ops: **`deploy/README.md`** · changelog: **`docs/updates.md`** · content flow: **`docs/content-pipeline.md`**
 
 **Next sprint candidates:**
 - **Pike hunt scenario** — tactical hunt with volunteer loss budget (≤3), combo combat, deterrence outcome

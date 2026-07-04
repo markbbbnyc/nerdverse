@@ -14,6 +14,10 @@ set -euo pipefail
 INSTALL_ROOT="${NERDVERSE_INSTALL_ROOT:-/opt/nerdverse-public}"
 REPO_URL="${NERDVERSE_REPO_URL:-https://github.com/markbbbnyc/nerdverse.git}"
 GIT_REF="${NERDVERSE_GIT_REF:-main}"
+# Guard against accidental numeric args (e.g. INSTALL_FROM_SOURCE leaking into GIT_REF).
+if [[ "${GIT_REF}" == "0" || "${GIT_REF}" == "1" ]] || [[ ! "${GIT_REF}" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+    GIT_REF="main"
+fi
 PLAY_USER="${NERDVERSE_PLAY_USER:-nerdverse-play}"
 SESSION_ROOT="/var/lib/nerdverse/sessions"
 TELEMETRY_ROOT="/var/lib/nerdverse/telemetry"
@@ -79,6 +83,9 @@ elif [[ ! -d "${INSTALL_ROOT}/.git" ]]; then
         log "Cloning ${REPO_URL} (${GIT_REF}) → ${INSTALL_ROOT}"
         git clone --branch "${GIT_REF}" --depth 1 "${REPO_URL}" "${INSTALL_ROOT}"
     fi
+elif [[ -f "${SOURCE_ARCHIVE}" ]]; then
+    log "Updating ${INSTALL_ROOT} from source archive (no git checkout) …"
+    _install_from_archive
 else
     log "Updating ${INSTALL_ROOT} (git pull) …"
     git -C "${INSTALL_ROOT}" fetch origin "${GIT_REF}"

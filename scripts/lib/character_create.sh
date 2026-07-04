@@ -88,8 +88,21 @@ cc_roll_public_defaults() {
     cc_public_random_defaults
 }
 
+cc_public_progress() {
+    local msg="$1" tty
+    [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" != "1" ]] && return 0
+    tty=$(cc_tty)
+    printf '  %s%s%s\n' "$DIM" "$msg" "$RESET" >"$tty" 2>/dev/null \
+        || printf '  %s\n' "$msg"
+}
+
 cc_finalize_registration() {
     local player="$1" companion="$2" title="$3" surname="$4"
+
+    if [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]]; then
+        cc_public_progress "Forging your life…"
+        cc_public_progress "  ▸ Provisioning isolated save"
+    fi
 
     if ! game_db_create_web_session "$companion"; then
         echo "ERROR: could not create game database." >&2
@@ -132,7 +145,7 @@ character_create_wizard_public() {
     clear_screen
     draw_operator_banner "main"
     echo
-    draw_screen_header "${ICON_CHAR}NERDVERSE — NEW LIFE REGISTRATION"
+    draw_screen_header "$(ui_header_glyph char)NERDVERSE — NEW LIFE REGISTRATION"
     echo
     printf '  %sOne-shot pilgrim run.%s  Names rolled for this tab only.\n\n' "$AMBER" "$RESET"
     printf '    %sPilgrim:%s   %s — %s\n' "$CYAN" "$RESET" "$player" "$title"
@@ -202,7 +215,7 @@ character_create_wizard() {
     clear_screen
     draw_operator_banner "main"
     echo
-    draw_screen_header "${ICON_CHAR}NERDVERSE — NEW LIFE REGISTRATION"
+    draw_screen_header "$(ui_header_glyph char)NERDVERSE — NEW LIFE REGISTRATION"
     echo
     printf '  %sWelcome, operator.%s  One life. No reloads. Choose who walks the road.\n\n' "$AMBER" "$RESET"
 

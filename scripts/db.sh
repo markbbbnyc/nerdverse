@@ -119,7 +119,11 @@ db_ensure_database_and_user() {
     local app_user="${DB_USER}"
     local dbname="${DB_NAME}"
 
-    echo "Ensuring database and dedicated game user '${app_user}' exist..."
+    if [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]]; then
+        echo "Ensuring database and dedicated game user '${app_user}' exist..." >&2
+    else
+        echo "Ensuring database and dedicated game user '${app_user}' exist..."
+    fi
 
     # Create database
     db_setup_exec "CREATE DATABASE IF NOT EXISTS \`${dbname}\`;" || true
@@ -145,5 +149,9 @@ db_ensure_database_and_user() {
         GRANT ALL PRIVILEGES ON \`${dbname}\`.* TO '${app_user}'@'127.0.0.1';
     " || true
 
-    echo "Database and app user privileges ensured."
+    if [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]]; then
+        echo "Database and app user privileges ensured." >&2
+    else
+        echo "Database and app user privileges ensured."
+    fi
 }

@@ -86,7 +86,14 @@ game_db_create_web_session() {
     suffix=$(openssl rand -hex 4 2>/dev/null || echo "$RANDOM$RANDOM")
     new_name="nerdverse_web_${suffix}"
 
-    echo "[web-session] Creating isolated database '${new_name}' ..."
+    if [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]]; then
+        echo "[web-session] Creating isolated database '${new_name}' ..." >&2
+        if declare -f cc_public_progress >/dev/null 2>&1; then
+            cc_public_progress "  ▸ Seeding Brindleford Vale (chapter 1)"
+        fi
+    else
+        echo "[web-session] Creating isolated database '${new_name}' ..."
+    fi
     local prev_name="${DB_NAME}"
     export DB_NAME="$new_name"
     db_reinit
@@ -105,7 +112,11 @@ game_db_create_web_session() {
     NERDVERSE_PUBLIC_FRESH_SEED=1 NERDVERSE_FRESH_SEED=1 "$apply_script" --fresh --quiet
 
     game_db_set_active "$new_name"
-    echo "[web-session] Ready: ${new_name}"
+    if [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]]; then
+        echo "[web-session] Ready: ${new_name}" >&2
+    else
+        echo "[web-session] Ready: ${new_name}"
+    fi
     return 0
 }
 

@@ -108,9 +108,56 @@ ui_use_compact() {
 }
 
 visible_len() {
-    local s="$1"
-    s=$(printf %s "$s" | sed -E 's/\x1b\[[0-9;]*m//g' 2>/dev/null || echo "$s")
-    echo "${#s}"
+    local s="$1" len
+    s=$(printf %s "$s" | sed -E 's/\x1b\[[0-9;]*m//g' 2>/dev/null || printf '%s' "$s")
+    if command -v python3 >/dev/null 2>&1; then
+        len=$(python3 -c '
+import re, sys, unicodedata
+s = re.sub(r"\x1b\[[0-9;]*m", "", sys.argv[1])
+w = 0
+for ch in s:
+    w += 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+print(w)
+' "$s" 2>/dev/null) || len=""
+        if [[ -n "$len" && "$len" =~ ^[0-9]+$ ]]; then
+            echo "$len"
+            return
+        fi
+    fi
+    # Fallback: treat common emoji/icons as two columns
+    local plain extra
+    plain=$(printf %s "$s" | tr -cd '[:print:][:space:]')
+    extra=$(printf %s "$plain" | grep -o '[👤🗺📜⚒⏏⚠◇]' 2>/dev/null | wc -l | tr -d ' ')
+    len=$(( ${#plain} + extra ))
+    echo "$len"
+}
+
+# ASCII-safe header prefix for web terminals (emoji breaks box width math).
+ui_header_glyph() {
+    local kind="${1:-char}"
+    if [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]]; then
+        case "$kind" in
+            map)    printf '[~] ' ;;
+            scroll) printf '[#] ' ;;
+            forge)  printf '[+] ' ;;
+            exit)   printf '[x] ' ;;
+            *)      printf '[*] ' ;;
+        esac
+        return
+    fi
+    case "$kind" in
+        map)    printf '%s' "$ICON_MAP" ;;
+        scroll) printf '%s' "$ICON_SCROLL" ;;
+        forge)  printf '%s' "$ICON_FORGE" ;;
+        exit)   printf '%s' "$ICON_EXIT" ;;
+        *)      printf '%s' "$ICON_CHAR" ;;
+    esac
+}
+
+ui_public_preregistered() {
+    [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]] \
+        && declare -f game_db_is_web_session >/dev/null 2>&1 \
+        && ! game_db_is_web_session "${DB_NAME:-}"
 }
 
 center_line() {
@@ -241,8 +288,15 @@ draw_operator_banner() {
     local w line_body
     w=$(ui_box_width)
 
+    if ui_public_preregistered; then
+        op_name="NEW PILGRIM"
+        db_label="Tab · new life"
+    fi
+
     if ui_use_compact && [[ "${1:-$(current_screen)}" == "main" ]]; then
-        [[ -z "$db_label" && -n "${DB_NAME:-}" ]] && db_label="${DB_NAME}"
+        if [[ -z "$db_label" && -n "${DB_NAME:-}" ]] && ! ui_public_preregistered; then
+            db_label="${DB_NAME}"
+        fi
         line_body=$(printf ' NERDVERSE OS/400  %s│%s %s  %s│%s %s  %s│%s %s' \
             "$DIM" "$RESET" "$scr" "$DIM" "$RESET" "$op_name" "$DIM" "$RESET" "${db_label:-PUBLIC}")
         printf '%s╔' "$BRIGHT_GREEN"
@@ -284,21 +338,33 @@ draw_operator_banner() {
     printf '╝%s\n' "$RESET"
 }
 
+ui_box_char() {
+    if [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]]; then
+        printf '%s' '-'
+    else
+        printf '%s' '─'
+    fi
+}
+
 draw_screen_header() {
     local title="$1"
-    local w line title_vis used right_pad sid
+    local w border title_vis used right_pad sid
     w=$(ui_box_width)
-    line=$(printf '%*s' "$w" '' | tr ' ' '─')
+    border=$(ui_box_char)
     sid=$(ui_screen_id)
 
-    printf '%s┌%s┐%s\n' "$GREEN" "$line" "$RESET"
+    printf '%s┌' "$GREEN"
+    ui_fill_repeat "$w" "$border"
+    printf '┐%s\n' "$RESET"
     printf '%s│%s %s' "$GREEN" "$RESET" "$title"
     title_vis=$(visible_len "$title")
     used=$(( 2 + title_vis ))
     right_pad=$(( w - used - ${#sid} - 2 ))
     (( right_pad < 0 )) && right_pad=0
     printf '%*s%s %s│%s\n' "$right_pad" "" "$DIM${sid}${RESET}" "$GREEN" "$RESET"
-    printf '%s└%s┘%s\n' "$GREEN" "$line" "$RESET"
+    printf '%s└' "$GREEN"
+    ui_fill_repeat "$w" "$border"
+    printf '┘%s\n' "$RESET"
 }
 
 # Ledger-style menu row with dotted leader

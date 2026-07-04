@@ -72,17 +72,25 @@ NERDVERSE_ADMIN_USER=dashboard NERDVERSE_ADMIN_PASS='your-secret' \
 ## Security model
 
 1. **Session isolation** — Each browser tab gets `nerdverse_web_{random_hex}`. `play.sh --public-terminal` **refuses** to run without a session `active_db` pointing at a `nerdverse_web_*` database.
-2. **Separate seeds** — Public lives use `003_public_terminal_fresh.sql`, not the author checkpoint in `002_fresh_game.sql`.
+2. **Separate seeds** — Public lives use `sql/seeds/profiles/public_arc_start.sql` (via `003_public_terminal_fresh.sql`), not the author checkpoint in `profiles/author_checkpoint.sql`.
 3. **No shell** — `nerdverse-cage.sh` traps signals; Sign Off (`0` / F12) ends the session. `PATH` is `deploy/bin-cage/` only.
 4. **Credentials** — `nerdverse.env` is `root:nerdverse-play` mode `640`. Session dirs are `nerdverse-play` only.
 5. **Telemetry** — `stats.json` is owned by `nerdverse-play` so live aggregates work.
 
 ## Player flow
 
-1. Open `/play/` → registration rolls random names.
+1. Open `/play/` → registration rolls random names (banner: **NEW PILGRIM │ Tab · new life**).
 2. Press `.` + Enter to confirm (or `e` to customize).
-3. Wizard creates `nerdverse_web_*`, renames pilgrim + companion, sets `active_db` in session dir.
-4. Command ledger runs until Sign Off.
+3. Progress lines while MariaDB provisions: *Forging your life…* → *Provisioning* → *Seeding Brindleford Vale*.
+4. Wizard creates `nerdverse_web_*`, renames pilgrim + companion, sets `active_db` in session dir.
+5. Command ledger runs until Sign Off (`0` / F12). Public tabs skip daily SQL backup (no player-visible warnings).
+
+### Public terminal UX notes
+
+- Headers use ASCII `[*]` prefixes and `-` box borders (ttyd-safe; emoji breaks width math).
+- Trust/Bond spelled out on compact HUD (not `T/B`).
+- Companion name in ledger/quotes uses the registered name, not author defaults.
+- Technical DB logs (`[web-session]`, `Ensuring database…`) go to stderr — not shown in the browser terminal.
 
 ## Environment variables (server install)
 
@@ -136,7 +144,10 @@ certbot --nginx -d play.yourdomain.com
 | `deploy/systemd/nerdverse-ttyd.service` | ttyd unit |
 | `scripts/lib/telemetry.sh` | JSONL event logging |
 | `scripts/telemetry_aggregate.sh` | Roll-up for admin dashboard |
-| `sql/seeds/003_public_terminal_fresh.sql` | Public-only starting world |
+| `sql/seeds/003_public_terminal_fresh.sql` | Public fresh-game orchestrator |
+| `sql/seeds/profiles/public_arc_start.sql` | Chapter 1 pilgrim start (public) |
+| `sql/seeds/profiles/author_checkpoint.sql` | Author mid-arc checkpoint (dev only) |
+| `docs/updates.md` | Session changelog (deploy + engine) |
 
 ## Scaling to multiple worlds
 

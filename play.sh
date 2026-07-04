@@ -91,7 +91,9 @@ elif ! db_check; then
     exit 1
 fi
 
-db_backup_daily >/dev/null 2>&1 || echo "Warning: daily backup failed." >&2
+if [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" != "1" ]]; then
+    db_backup_daily >/dev/null 2>&1 || echo "Warning: daily backup failed." >&2
+fi
 ./scripts/apply_migrations.sh --quiet || true
 travel_normalize_character_locations
 sera_normalize_saved_stats
