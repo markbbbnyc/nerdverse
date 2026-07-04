@@ -27,7 +27,8 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/nerdverse/sessions
+# sessions: per-tab active_db; telemetry: events.jsonl + stats.json aggregate
+ReadWritePaths=/var/lib/nerdverse/sessions /var/lib/nerdverse/telemetry
 ReadOnlyPaths=/opt/nerdverse-public
 
 [Install]

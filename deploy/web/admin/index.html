@@ -69,7 +69,11 @@
     <div class="recent" id="recent"></div>
   </section>
 
-  <p class="sub"><a href="/">← Operator landing</a> · Refreshes on load · <span id="gen"></span></p>
+  <p class="sub">
+    <a href="/">← Operator landing</a>
+    · <button type="button" id="refresh" style="background:#0d140d;color:#33ff66;border:1px solid #1a8f3a;font:inherit;cursor:pointer;padding:0.2rem 0.5rem;">Refresh now</button>
+    · Auto every 10s · <span id="gen"></span>
+  </p>
 
   <script>
     function row(k, v) {
@@ -86,7 +90,7 @@
     async function load() {
       const status = document.getElementById('status');
       try {
-        const r = await fetch('/admin/stats.json', { cache: 'no-store' });
+        const r = await fetch('/admin/stats.json?t=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' });
         if (!r.ok) throw new Error(r.status);
         const s = await r.json();
         status.textContent = 'Live from /var/lib/nerdverse/telemetry';
@@ -116,8 +120,9 @@
         status.innerHTML = '<span class="err">Could not load stats.json — ' + e.message + '</span>';
       }
     }
+    document.getElementById('refresh').addEventListener('click', load);
     load();
-    setInterval(load, 30000);
+    setInterval(load, 10000);
   </script>
 </body>
 </html>

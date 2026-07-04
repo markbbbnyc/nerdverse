@@ -13,6 +13,10 @@ TELEMETRY_STATS="${TELEMETRY_DIR}/stats.json"
     exit 0
 }
 
+LOCK_FILE="${TELEMETRY_DIR}/.aggregate.lock"
+exec 9>"${LOCK_FILE}"
+flock -w 10 9 || exit 0
+
 TELEMETRY_TMP="${TELEMETRY_STATS}.tmp.$$"
 python3 - "${TELEMETRY_FILE}" "${TELEMETRY_TMP}" <<'PY'
 import json, sys, collections
@@ -50,9 +54,16 @@ for e in events:
         session_ends += 1
     elif et == "wizard_complete":
         wizard_complete += 1
-        p = e.get("player") or e.get("detail", "")
+        p = (e.get("player") or "").strip()
+        if not p:
+            detail = e.get("detail") or ""
+            if "player=" in detail:
+                for part in detail.split(";"):
+                    if part.startswith("player="):
+                        p = part.split("=", 1)[1]
+                        break
         if p:
-            players[p.split("=")[-1] if "=" in p else p] += 1
+            players[p] += 1
     elif et == "wizard_abandon":
         wizard_abandon += 1
     elif et == "menu_choice":

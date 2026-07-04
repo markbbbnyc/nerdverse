@@ -150,6 +150,12 @@ chmod 664 "${TELEMETRY_ROOT}/events.jsonl"
 sudo -u "${PLAY_USER}" bash "${INSTALL_ROOT}/scripts/telemetry_aggregate.sh" 2>/dev/null || true
 chown "${PLAY_USER}:${PLAY_USER}" "${TELEMETRY_ROOT}/stats.json" 2>/dev/null || true
 chmod 644 "${TELEMETRY_ROOT}/stats.json" 2>/dev/null || true
+# Safety net: refresh dashboard stats even if an async aggregate was missed
+CRON_FILE="/etc/cron.d/nerdverse-telemetry"
+cat > "${CRON_FILE}" <<CRON
+*/2 * * * * ${PLAY_USER} ${INSTALL_ROOT}/scripts/telemetry_aggregate.sh >/dev/null 2>&1
+CRON
+chmod 644 "${CRON_FILE}"
 
 ADMIN_HTPASSWD="/etc/nginx/.htpasswd-nerdverse-admin"
 ADMIN_USER="${NERDVERSE_ADMIN_USER:-dashboard}"

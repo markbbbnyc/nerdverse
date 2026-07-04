@@ -36,18 +36,28 @@ tel_event() {
             "$(tel_json_escape "$screen")" \
             "$(tel_json_escape "$choice")" \
             "$(tel_json_escape "$detail")"
-    } >> "${TELEMETRY_FILE}" 2>/dev/null || true
+    } >> "${TELEMETRY_FILE}" 2>>"${TELEMETRY_DIR}/.write-errors.log" || true
 
     case "$event_type" in
-        session_start|session_end|wizard_complete|wizard_abandon|menu_choice)
+        session_start|session_end|wizard_complete|wizard_abandon)
+            tel_refresh_stats_sync
+            ;;
+        menu_choice)
             tel_refresh_stats_async
             ;;
     esac
 }
 
+tel_refresh_stats_sync() {
+    local root="${NERDVERSE_INSTALL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+    local agg="${root}/scripts/telemetry_aggregate.sh"
+    [[ -f "$agg" ]] || return 0
+    bash "$agg" >/dev/null 2>&1 || true
+}
+
 tel_refresh_stats_async() {
     local root="${NERDVERSE_INSTALL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
     local agg="${root}/scripts/telemetry_aggregate.sh"
-    [[ -x "$agg" ]] || [[ -f "$agg" ]] || return 0
+    [[ -f "$agg" ]] || return 0
     ( bash "$agg" >/dev/null 2>&1 & ) || true
 }

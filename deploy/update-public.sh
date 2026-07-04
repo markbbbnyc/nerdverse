@@ -29,4 +29,10 @@ cp "${INSTALL_ROOT}/deploy/systemd/nerdverse-ttyd.service" /etc/systemd/system/n
 systemctl daemon-reload
 systemctl restart nerdverse-ttyd
 
+CRON_FILE="/etc/cron.d/nerdverse-telemetry"
+cat > "${CRON_FILE}" <<CRON
+*/2 * * * * ${PLAY_USER} ${INSTALL_ROOT}/scripts/telemetry_aggregate.sh >/dev/null 2>&1
+CRON
+chmod 644 "${CRON_FILE}"
+
 echo "[update-public] Engine updated. Session DBs (nerdverse_web_*) preserved."
