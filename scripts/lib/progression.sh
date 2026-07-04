@@ -17,7 +17,7 @@ _prog_char_id() {
 # Companion progression snapshot (same mechanics as player — separate track).
 prog_load_sera_progress() {
     local row _old_ifs
-    row=$(db_query_row "SELECT prog_level, road_xp, road_xp_max, breakthrough_pending FROM characters WHERE name='Sera Thornwake' LIMIT 1;")
+    row=$(db_query_row "SELECT prog_level, road_xp, road_xp_max, breakthrough_pending FROM characters WHERE is_player=FALSE ORDER BY id LIMIT 1;")
     _old_ifs="$IFS"
     IFS=$'\t'
     read -r SERA_PROG_LEVEL SERA_ROAD_XP SERA_ROAD_XP_MAX SERA_BREAKTHROUGH_PENDING <<< "$row" || true

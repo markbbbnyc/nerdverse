@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NERDVERSE — Operator Analytics</title>
+  <style>
+    :root {
+      --phosphor: #33ff66;
+      --dim: #1a8f3a;
+      --bg: #0a0f0a;
+      --panel: #0d140d;
+      --amber: #ffcc66;
+      --muted: #9fdf9f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--phosphor);
+      font-family: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+      padding: 1.5rem;
+    }
+    h1 { font-size: 1rem; letter-spacing: 0.25em; margin: 0 0 0.25rem; }
+    .sub { color: var(--dim); font-size: 0.75rem; margin-bottom: 1.5rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      border: 1px solid var(--dim);
+      background: var(--panel);
+      padding: 1rem;
+    }
+    .card .n { font-size: 1.8rem; color: var(--amber); }
+    .card .l { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.08em; }
+    section { margin-bottom: 1.5rem; }
+    h2 { font-size: 0.8rem; letter-spacing: 0.15em; color: var(--amber); border-bottom: 1px solid var(--dim); padding-bottom: 0.4rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+    th, td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid #1a2a1a; }
+    th { color: var(--dim); font-weight: normal; }
+    .recent { color: var(--muted); font-size: 0.7rem; line-height: 1.5; }
+    .err { color: #ff6666; }
+    a { color: var(--phosphor); }
+  </style>
+</head>
+<body>
+  <h1>NERDVERSE ANALYTICS</h1>
+  <div class="sub">PUBLIC TERMINAL TELEMETRY — EGO-SURF CONSOLE FOR THE AUTHOR</div>
+  <div id="status" class="sub">Loading stats…</div>
+
+  <div class="grid" id="kpis"></div>
+
+  <section>
+    <h2>TOP MENU CHOICES</h2>
+    <table id="choices"><tbody></tbody></table>
+  </section>
+
+  <section>
+    <h2>PILGRIM NAMES REGISTERED</h2>
+    <table id="players"><tbody></tbody></table>
+  </section>
+
+  <section>
+    <h2>RECENT EVENTS</h2>
+    <div class="recent" id="recent"></div>
+  </section>
+
+  <p class="sub"><a href="/">← Operator landing</a> · Refreshes on load · <span id="gen"></span></p>
+
+  <script>
+    function row(k, v) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${k}</td><td>${v}</td>`;
+      return tr;
+    }
+    function kpi(n, l) {
+      const d = document.createElement('div');
+      d.className = 'card';
+      d.innerHTML = `<div class="n">${n}</div><div class="l">${l}</div>`;
+      return d;
+    }
+    async function load() {
+      const status = document.getElementById('status');
+      try {
+        const r = await fetch('/admin/stats.json', { cache: 'no-store' });
+        if (!r.ok) throw new Error(r.status);
+        const s = await r.json();
+        status.textContent = 'Live from /var/lib/nerdverse/telemetry';
+        document.getElementById('gen').textContent = 'Generated ' + (s.generated_at || '?');
+
+        const kpis = document.getElementById('kpis');
+        kpis.append(
+          kpi(s.unique_sessions ?? 0, 'UNIQUE SESSIONS'),
+          kpi(s.session_starts ?? 0, 'SESSION STARTS'),
+          kpi(s.wizard_completions ?? 0, 'LIVES REGISTERED'),
+          kpi((s.completion_rate_pct ?? 0) + '%', 'WIZARD COMPLETION'),
+          kpi(s.session_ends ?? 0, 'CLEAN SIGN-OFFS'),
+          kpi(s.total_events ?? 0, 'TOTAL EVENTS')
+        );
+
+        const ct = document.querySelector('#choices tbody');
+        (s.top_choices || []).forEach(c => ct.appendChild(row(c.key, c.count)));
+
+        const pt = document.querySelector('#players tbody');
+        (s.top_player_names || []).forEach(p => pt.appendChild(row(p.key, p.count)));
+
+        const rec = document.getElementById('recent');
+        rec.innerHTML = (s.recent_events || []).map(e =>
+          `${e.ts} · ${e.type} · ${e.screen || '-'} · ${e.choice || '-'} · ${e.player || ''} ${e.detail || ''}`
+        ).join('<br>') || '(no events yet)';
+      } catch (e) {
+        status.innerHTML = '<span class="err">Could not load stats.json — ' + e.message + '</span>';
+      }
+    }
+    load();
+    setInterval(load, 30000);
+  </script>
+</body>
+</html>

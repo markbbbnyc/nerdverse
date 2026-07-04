@@ -28,12 +28,12 @@ travel_normalize_character_locations() {
         [[ -z "$display" ]] && display="${_loc:-Brindleford Forge}"
         display=$(ui_unescape_sql "$display")
         db_exec "UPDATE characters SET location_key='${key}', location='${display//\'/\'\'}' WHERE is_player = TRUE;"
-        db_exec "UPDATE characters SET location_key='${key}', location='${display//\'/\'\'}' WHERE name='Sera Thornwake';"
+        db_exec "UPDATE characters SET location_key='${key}', location='${display//\'/\'\'}' WHERE is_player=FALSE;"
     else
         display=$(ui_unescape_sql "${_loc}")
         if [[ "$display" != "${_loc}" ]]; then
             db_exec "UPDATE characters SET location='${display//\'/\'\'}' WHERE is_player = TRUE;"
-            db_exec "UPDATE characters SET location='${display//\'/\'\'}' WHERE name='Sera Thornwake';"
+            db_exec "UPDATE characters SET location='${display//\'/\'\'}' WHERE is_player=FALSE;"
         fi
     fi
 }
@@ -95,12 +95,12 @@ travel_to() {
     esc_display=$(printf '%s' "$display" | sed "s/'/''/g")
 
     db_exec "UPDATE characters SET location_key='${dest_key}', location='${esc_display}' WHERE is_player = TRUE;"
-    db_exec "UPDATE characters SET location_key='${dest_key}', location='${esc_display}' WHERE name='Sera Thornwake';"
+    db_exec "UPDATE characters SET location_key='${dest_key}', location='${esc_display}' WHERE is_player=FALSE;"
     db_exec "UPDATE locations SET visited = TRUE WHERE key_name = '${dest_key}';"
 
     travel_load_current
     LOCATION="$display"
-    log_narrative "Meyiu and Sera walked to ${display}."
+    log_narrative "$(party_player_name 2>/dev/null || echo Pilgrim) and $(party_companion_short 2>/dev/null || echo Guide) walked to ${display}."
 
     if [[ "${danger:-0}" -ge 4 ]]; then
         echo

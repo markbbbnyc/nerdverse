@@ -7,10 +7,12 @@
 # - This makes the game portable across any local user on Linux/macOS.
 
 # Load config if present (preserve caller-exported DB_NAME for multi-save / --new-game)
+_DB_SH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CALLER_DB_NAME="${DB_NAME:-}"
-if [[ -f "$(dirname "$0")/../nerdverse.env" ]]; then
-    source "$(dirname "$0")/../nerdverse.env"
+if [[ -f "${_DB_SH_DIR}/../nerdverse.env" ]]; then
+    source "${_DB_SH_DIR}/../nerdverse.env"
 fi
+unset _DB_SH_DIR
 if [[ -n "${_CALLER_DB_NAME}" ]]; then
     DB_NAME="${_CALLER_DB_NAME}"
 fi
@@ -28,11 +30,12 @@ DB_PASS="${DB_PASS:-}"
 _build_mariadb_cmd() {
     local user="$1"
     local extra="$2"
+    local charset="--default-character-set=utf8mb4"
     if [[ -n "$DB_PASS" ]]; then
-        echo "mariadb -u ${user} -p${DB_PASS} -h ${DB_HOST} -D ${DB_NAME} ${extra}"
+        echo "mariadb ${charset} -u ${user} -p${DB_PASS} -h ${DB_HOST} -D ${DB_NAME} ${extra}"
     else
         # Ignore global .my.cnf defaults to prevent password leakage from other users
-        echo "mariadb --no-defaults -u ${user} -h ${DB_HOST} -D ${DB_NAME} ${extra}"
+        echo "mariadb ${charset} --no-defaults -u ${user} -h ${DB_HOST} -D ${DB_NAME} ${extra}"
     fi
 }
 
@@ -48,7 +51,7 @@ db_reinit
 # You can override in nerdverse.env with DB_SETUP_USER / DB_SETUP_PASS.
 DEFAULT_SETUP_USER="${USER:-root}"
 DB_SETUP_USER="${DB_SETUP_USER:-${DEFAULT_SETUP_USER}}"
-DB_SETUP_PASS="${DB_SETUP_PASS:-${DB_PASS}}"
+DB_SETUP_PASS="${DB_SETUP_PASS:-}"
 
 _build_setup_cmd() {
     local u="$1"
@@ -140,7 +143,6 @@ db_ensure_database_and_user() {
     db_setup_exec "
         GRANT ALL PRIVILEGES ON \`${dbname}\`.* TO '${app_user}'@'localhost';
         GRANT ALL PRIVILEGES ON \`${dbname}\`.* TO '${app_user}'@'127.0.0.1';
-        FLUSH PRIVILEGES;
     " || true
 
     echo "Database and app user privileges ensured."

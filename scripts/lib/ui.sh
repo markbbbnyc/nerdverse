@@ -69,6 +69,35 @@ get_lines() {
     fi
 }
 
+# ttyd / web terminals sometimes report 0 columns — never draw a zero-width box.
+ui_box_width() {
+    local cols w
+    cols=$(get_cols)
+    if [[ ! "$cols" =~ ^[0-9]+$ ]] || (( cols < 50 )); then
+        cols=72
+    fi
+    w=$(( cols > 78 ? 78 : cols - 2 ))
+    (( w < 56 )) && w=56
+    printf '%s' "$w"
+}
+
+ui_fill_repeat() {
+    local count="$1" char="$2" i
+    for (( i=0; i<count; i++ )); do
+        printf '%s' "$char"
+    done
+}
+
+ui_box_pad_line() {
+    local width="$1"
+    shift
+    local content="$*" vis pad
+    vis=$(visible_len "$content")
+    pad=$(( width - vis ))
+    (( pad < 0 )) && pad=0
+    printf '%s%*s' "$content" "$pad" ""
+}
+
 # Compact layout for MacBook / short terminals (default when height ≤ 30 rows).
 ui_use_compact() {
     [[ "${NERDVERSE_COMPACT:-}" == "0" ]] && return 1
@@ -127,30 +156,110 @@ normalize_choice() {
     esac
 }
 
+game_input_tty() {
+    local tty="${NERDVERSE_TTY:-/dev/tty}"
+    if [[ -e "$tty" ]] && [[ -r "$tty" ]] && [[ -c "$tty" || -w "$tty" ]]; then
+        printf '%s' "$tty"
+    else
+        printf '%s' "/dev/stdin"
+    fi
+}
+
+# Read menu input from the real TTY (web ttyd); ignore empty/control noise.
+read_game_choice() {
+    local prompt_shown="${1:-0}"
+    local choice tty
+    tty=$(game_input_tty)
+    while true; do
+        if [[ "$prompt_shown" != "1" ]]; then
+            printf '> ' >"$tty" 2>/dev/null || printf '> '
+        fi
+        if [[ "$tty" == "/dev/stdin" ]]; then
+            read -r choice
+        else
+            read -r choice <"$tty" 2>/dev/null || read -r choice
+        fi
+        choice="${choice//$'\r'/}"
+        choice=$(printf '%s' "$choice" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        case "$choice" in
+            ''|$'\e'|$'\e'*|$'\x1b'*)
+                [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]] && continue
+                ;;
+            *)
+                printf '%s' "$choice"
+                return 0
+                ;;
+        esac
+        [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" != "1" ]] && break
+    done
+    printf '%s' "$choice"
+}
+
+read_game_confirm() {
+    local msg="${1:-Press enter...}"
+    local tty
+    tty=$(game_input_tty)
+    printf '%s' "$msg"
+    if [[ "$tty" == "/dev/stdin" ]]; then
+        read -r _dummy
+    else
+        read -r _dummy <"$tty" 2>/dev/null || read -r _dummy
+    fi
+}
+
+is_valid_main_choice() {
+    case "$1" in
+        f5|1|2|3|4|7|8|9|0|travel|go|walk|inventory|inv|i|talk|sera|t|act|do|local|world|map|maps|localmap|look|here|sheet|sheets|char|q|quit|exit)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+is_overlay_return_choice() {
+    case "$1" in
+        f5|0|f3|back|b) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 # Top operator banner — arsenal inventory program that forgot it became a game
 draw_operator_banner() {
-    local scr db_label
+    local scr db_label op_name
     scr=$(ui_screen_id "${1:-$(current_screen)}")
+    op_name="OPERATOR"
+    if declare -f party_player_name >/dev/null 2>&1; then
+        op_name=$(party_player_name 2>/dev/null || echo "OPERATOR")
+        [[ -z "$op_name" ]] && op_name="OPERATOR"
+    fi
     db_label=""
     if declare -f game_db_label >/dev/null 2>&1 && [[ -n "${DB_NAME:-}" ]]; then
         db_label=$(game_db_label "${DB_NAME}" 2>/dev/null || true)
     fi
-    local w cols inner
-    cols=$(get_cols)
-    w=$(( cols > 78 ? 78 : cols - 2 ))
-    inner=$(printf "%${w}s" | tr ' ' '═')
+    local w line_body
+    w=$(ui_box_width)
 
     if ui_use_compact && [[ "${1:-$(current_screen)}" == "main" ]]; then
-        printf '%s╔%s╗%s\n' "$BRIGHT_GREEN" "$inner" "$RESET"
-        printf '%s║%s NERDVERSE OS/400  %s│%s %s  %s│%s MEYIU  %s│%s %s%s' \
-            "$BRIGHT_GREEN" "$RESET" "$DIM" "$RESET" "$scr" "$DIM" "$RESET" "$DIM" "$RESET" \
-            "${db_label:-BRINDLEFORD}" "$RESET"
-        printf '%*s%s║%s\n' $(( w - 40 - ${#scr} - ${#db_label} )) "" "$BRIGHT_GREEN" "$RESET"
-        printf '%s╚%s╝%s\n' "$BRIGHT_GREEN" "$inner" "$RESET"
+        [[ -z "$db_label" && -n "${DB_NAME:-}" ]] && db_label="${DB_NAME}"
+        line_body=$(printf ' NERDVERSE OS/400  %s│%s %s  %s│%s %s  %s│%s %s' \
+            "$DIM" "$RESET" "$scr" "$DIM" "$RESET" "$op_name" "$DIM" "$RESET" "${db_label:-PUBLIC}")
+        printf '%s╔' "$BRIGHT_GREEN"
+        ui_fill_repeat "$w" "═"
+        printf '╗%s\n' "$RESET"
+        printf '%s║%s' "$BRIGHT_GREEN" "$RESET"
+        ui_box_pad_line "$w" "$line_body"
+        printf '%s║%s\n' "$BRIGHT_GREEN" "$RESET"
+        printf '%s╚' "$BRIGHT_GREEN"
+        ui_fill_repeat "$w" "═"
+        printf '╝%s\n' "$RESET"
         return
     fi
 
-    printf '%s╔%s╗%s\n' "$BRIGHT_GREEN" "$inner" "$RESET"
+    printf '%s╔' "$BRIGHT_GREEN"
+    ui_fill_repeat "$w" "═"
+    printf '╗%s\n' "$RESET"
     printf '%s║%s' "$BRIGHT_GREEN" "$RESET"
     printf ' NERDVERSE OS/400  %s│%s  ARSENAL INVENTORY / FIELD OPS  %s│%s  %s%s' \
         "$DIM" "$RESET" "$DIM" "$RESET" "$scr" "$RESET"
@@ -158,8 +267,8 @@ draw_operator_banner() {
     printf '%*s%s║%s\n' $(( w - line1_len )) "" "$BRIGHT_GREEN" "$RESET"
 
     printf '%s║%s' "$BRIGHT_GREEN" "$RESET"
-    printf ' SUBSYS: BRINDLEFORD VALE  %s│%s  OP: MEYIU  %s│%s  CLASS: PILGRIM-OPS' \
-        "$DIM" "$RESET" "$DIM" "$RESET"
+    printf ' SUBSYS: BRINDLEFORD VALE  %s│%s  OP: %s  %s│%s  CLASS: PILGRIM-OPS' \
+        "$DIM" "$RESET" "$op_name" "$DIM" "$RESET"
     local line2_len=54
     printf '%*s%s║%s\n' $(( w - line2_len )) "" "$BRIGHT_GREEN" "$RESET"
 
@@ -170,15 +279,16 @@ draw_operator_banner() {
         local line3_len=$(( 7 + ${#db_label} + 3 + 24 + 3 + 11 ))
         printf '%*s%s║%s\n' $(( w - line3_len )) "" "$BRIGHT_GREEN" "$RESET"
     fi
-    printf '%s╚%s╝%s\n' "$BRIGHT_GREEN" "$inner" "$RESET"
+    printf '%s╚' "$BRIGHT_GREEN"
+    ui_fill_repeat "$w" "═"
+    printf '╝%s\n' "$RESET"
 }
 
 draw_screen_header() {
     local title="$1"
-    local cols w line title_vis used right_pad sid
-    cols=$(get_cols)
-    w=$(( cols > 78 ? 78 : cols - 2 ))
-    line=$(printf "%${w}s" | tr ' ' '─')
+    local w line title_vis used right_pad sid
+    w=$(ui_box_width)
+    line=$(printf '%*s' "$w" '' | tr ' ' '─')
     sid=$(ui_screen_id)
 
     printf '%s┌%s┐%s\n' "$GREEN" "$line" "$RESET"
@@ -241,15 +351,16 @@ draw_location_panel() {
 
 draw_sera_operator_glyph() {
     local bond="${1:-25}"
-    local glyph msg color
+    local glyph msg color comp
+    comp=$(party_companion_short 2>/dev/null || echo "Guide")
     if [[ "$bond" -ge 80 ]]; then
-        glyph="◈"; msg="Sera: has chosen this road"; color="$AMBER"
+        glyph="◈"; msg="${comp}: has chosen this road"; color="$AMBER"
     elif [[ "$bond" -ge 55 ]]; then
-        glyph="◆"; msg="Sera: walking with you"; color="$GREEN"
+        glyph="◆"; msg="${comp}: walking with you"; color="$GREEN"
     elif [[ "$bond" -ge 30 ]]; then
-        glyph="◆"; msg="Sera: still choosing"; color="$YELLOW"
+        glyph="◆"; msg="${comp}: still choosing"; color="$YELLOW"
     else
-        glyph="◇"; msg="Sera: weighing whether to stay"; color="$DIM"
+        glyph="◇"; msg="${comp}: weighing whether to stay"; color="$DIM"
     fi
     printf '  %s%s %s%s   %s(COMPANION CHANNEL — autonomous player)%s\n' \
         "$color" "$glyph" "$msg" "$RESET" "$DIM" "$RESET"
@@ -281,27 +392,58 @@ draw_main_hud_compact() {
     if declare -f prog_load_sera_progress >/dev/null 2>&1; then
         prog_load_sera_progress
     fi
-    local t b t_bar b_bar sera_lv="${SERA_PROG_LEVEL:-1}" sera_rxp="${SERA_ROAD_XP:-0}" sera_rxmax="${SERA_ROAD_XP_MAX:-10}"
+    local t b sera_lv sera_rxp sera_rxmax comp_short w inner line_body
+    sera_lv="${SERA_PROG_LEVEL:-1}"
+    sera_rxp="${SERA_ROAD_XP:-0}"
+    sera_rxmax="${SERA_ROAD_XP_MAX:-10}"
+    comp_short="Guide"
+    if declare -f party_companion_short >/dev/null 2>&1; then
+        comp_short=$(party_companion_short 2>/dev/null || echo "Guide")
+    elif [[ -n "${COMPANION_DISPLAY_NAME:-}" ]]; then
+        comp_short="${COMPANION_DISPLAY_NAME}"
+    fi
     t=$(sera_clamp_meter "${SERA_TRUST:-35}" 2>/dev/null || echo "35")
     b=$(sera_clamp_meter "${SERA_BOND:-25}" 2>/dev/null || echo "25")
-    t_bar=$(sera_meter_bar "$t" 2>/dev/null || echo "░░░░░░░░")
-    b_bar=$(sera_meter_bar "$b" 2>/dev/null || echo "░░░░░░░░")
     local plvl
     plvl=$(db_query "SELECT prog_level FROM characters WHERE is_player=TRUE LIMIT 1;" 2>/dev/null || echo "1")
+    w=$(ui_box_width)
+    inner=$w
 
-    printf '%s┌─ FIELD GRID ─────────────────────────────────────────────────────┐%s\n' "$CYAN" "$RESET"
-    printf '%s│%s %-10s %-28s HP %2d/%-2d  Lv%-2s  %d🪙 %s│%s\n' \
-        "$CYAN" "$RESET" "$loc_key" "${loc_name:0:28}" "${CUR_HP:-?}" "${MAX_HP:-?}" "$plvl" "${COINS:-0}" \
-        "$CYAN" "$RESET"
-    printf '%s│%s Sera %2d/%-2d Lv%-2s Rx%2d/%-2s %s%s%s T:%3d B:%3d %s│%s\n' \
-        "$CYAN" "$RESET" "${SERA_HP:-?}" "${SERA_MAX:-?}" "$sera_lv" "$sera_rxp" "$sera_rxmax" \
-        "$AMBER" "$glyph" "$RESET" "$t" "$b" "$CYAN" "$RESET"
-    [[ "${SERA_BREAKTHROUGH_PENDING:-0}" -eq 1 ]] && \
-        printf '%s│%s %s◆ Sera BREAKTHROUGH READY — run ceremony on ./play.sh start%s  %s│%s\n' \
-            "$CYAN" "$RESET" "$AMBER" "$RESET" "$CYAN" "$RESET"
-    printf '%s│%s %s%s%s\n' "$CYAN" "$RESET" "$GRAY" "${chapter:-The road continues.}" "$RESET"
-    printf '%s│%s ⚠ %s%s%s\n' "$CYAN" "$RESET" "$DIM" "${threat:0:62}" "$RESET"
-    printf '%s└──────────────────────────────────────────────────────────────────┘%s\n' "$CYAN" "$RESET"
+    printf '%s┌' "$CYAN"
+    ui_fill_repeat "$w" "─"
+    printf '┐%s\n' "$RESET"
+    line_body=$(printf ' %-10s %-24s HP %2d/%-2d  Lv%-2s  %d silver' \
+        "$loc_key" "${loc_name:0:24}" "${CUR_HP:-?}" "${MAX_HP:-?}" "$plvl" "${COINS:-0}")
+    printf '%s│%s' "$CYAN" "$RESET"
+    ui_box_pad_line "$inner" "$line_body"
+    printf '%s│%s\n' "$CYAN" "$RESET"
+    line_body=$(printf ' %s  HP %2d/%-2d  Road %2d/%-2d  Lv%-2s' \
+        "${comp_short:0:12}" "${SERA_HP:-0}" "${SERA_MAX:-0}" "$sera_rxp" "$sera_rxmax" "$sera_lv")
+    printf '%s│%s' "$CYAN" "$RESET"
+    ui_box_pad_line "$inner" "$line_body"
+    printf '%s│%s\n' "$CYAN" "$RESET"
+    line_body=$(printf ' %sTrust %3d/100%s   %sBond %3d/100%s   %s%s%s' \
+        "$DIM" "$t" "$RESET" "$DIM" "$b" "$RESET" "$AMBER" "$glyph" "$RESET")
+    printf '%s│%s' "$CYAN" "$RESET"
+    ui_box_pad_line "$inner" "$line_body"
+    printf '%s│%s\n' "$CYAN" "$RESET"
+    [[ "${SERA_BREAKTHROUGH_PENDING:-0}" -eq 1 ]] && {
+        line_body=$(printf ' %s◆ %s BREAKTHROUGH READY%s' "$AMBER" "$comp_short" "$RESET")
+        printf '%s│%s' "$CYAN" "$RESET"
+        ui_box_pad_line "$inner" "$line_body"
+        printf '%s│%s\n' "$CYAN" "$RESET"
+    }
+    line_body=$(printf ' %s%s%s' "$GRAY" "${chapter:-The road continues.}" "$RESET")
+    printf '%s│%s' "$CYAN" "$RESET"
+    ui_box_pad_line "$inner" "$line_body"
+    printf '%s│%s\n' "$CYAN" "$RESET"
+    line_body=$(printf ' ⚠ %s%s%s' "$DIM" "${threat:0:58}" "$RESET")
+    printf '%s│%s' "$CYAN" "$RESET"
+    ui_box_pad_line "$inner" "$line_body"
+    printf '%s│%s\n' "$CYAN" "$RESET"
+    printf '%s└' "$CYAN"
+    ui_fill_repeat "$w" "─"
+    printf '┘%s\n' "$RESET"
 }
 
 draw_pf_key_strip() {
@@ -323,8 +465,8 @@ draw_pf_key_strip() {
                 "$DIM" "$RESET" "$GREEN" "$RESET" "$DIM" "$RESET" "$GRAY" "$RESET" "$DIM" "$RESET" "$DIM" "$RESET"
             ;;
         *)
-            printf '%s│%s  %sF3%s Back   %sF5%s Refresh   %sEnter%s Continue   %sAny key%s → previous screen %s│%s\n' \
-                "$DIM" "$RESET" "$GREEN" "$RESET" "$DIM" "$RESET" "$GRAY" "$RESET" "$DIM" "$RESET" "$DIM" "$RESET"
+            printf '%s│%s  %sF3%s Back   %sF5%s Refresh   %s0%s Return to ledger %s│%s\n' \
+                "$DIM" "$RESET" "$GREEN" "$RESET" "$DIM" "$RESET" "$DIM" "$RESET" "$DIM" "$RESET"
             ;;
     esac
     printf '%s└──────────────────────────────────────────────────────────────────┘%s\n' "$DIM" "$RESET"

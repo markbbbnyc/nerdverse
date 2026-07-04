@@ -55,7 +55,8 @@ function start_encounter() {
     local enemy_max_hp="${2:-18}"
     local enemy_hp=$enemy_max_hp
 
-    local player_name="Meyiu"
+    local player_name
+    player_name=$(party_player_name 2>/dev/null || echo "Pilgrim")
     local player_hp player_max hp_at_start outcome
     player_hp=$(db_query "SELECT current_hp FROM characters WHERE name='$player_name';")
     player_max=$(db_query "SELECT max_hp FROM characters WHERE name='$player_name';")

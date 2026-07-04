@@ -7,6 +7,11 @@
 #   ./scripts/apply_migrations.sh --fresh    # wipe game state + load fresh starting save
 #
 # Fresh seed also runs automatically when no player character exists (first install).
+#
+# Seed lanes:
+#   002_fresh_game.sql           — author Life-2 checkpoint (local dev)
+#   003_public_terminal_fresh.sql — anonymous public terminal (NERDVERSE_PUBLIC_FRESH_SEED=1)
+# Public servers set NERDVERSE_PUBLIC_SERVER=1 / NERDVERSE_SKIP_GAME_SEED=1 at bootstrap.
 
 set -euo pipefail
 
@@ -19,6 +24,7 @@ MIGRATIONS_DIR="${PROJECT_ROOT}/sql/migrations"
 SEEDS_DIR="${PROJECT_ROOT}/sql/seeds"
 CATALOG_SEED="001_catalog.sql"
 FRESH_SEED="002_fresh_game.sql"
+PUBLIC_FRESH_SEED="003_public_terminal_fresh.sql"
 
 FRESH_MODE=0
 QUIET=0
@@ -32,6 +38,11 @@ done
 
 if [[ "${NERDVERSE_FRESH_SEED:-}" == "1" ]]; then
     FRESH_MODE=1
+fi
+
+if [[ "${NERDVERSE_PUBLIC_FRESH_SEED:-}" == "1" ]]; then
+    FRESH_MODE=1
+    FRESH_SEED="${PUBLIC_FRESH_SEED}"
 fi
 
 _log() {
@@ -110,7 +121,10 @@ done
 
 # Decide whether to load the fresh starting save
 RUN_FRESH=0
-if [[ $FRESH_MODE -eq 1 ]]; then
+if [[ "${NERDVERSE_PUBLIC_SERVER:-}" == "1" || "${NERDVERSE_SKIP_GAME_SEED:-}" == "1" ]]; then
+    _log
+    _log "Public server / skip flag — no shared playable seed on template DB."
+elif [[ $FRESH_MODE -eq 1 ]]; then
     RUN_FRESH=1
     _log
     _log "Fresh game requested (--fresh)."
@@ -156,7 +170,7 @@ if [[ -d "$MAPS_DIR" ]]; then
             *)       mtype="local"; related="$map_key" ;;
         esac
 
-        (
+        if (
             printf "INSERT INTO maps (map_key, title, ascii, map_type, related_location, revealed)
 VALUES ('%s', '%s', '" "$map_key" "$title_esc"
             printf '%s' "$ascii" | sed "s/'/''/g"
@@ -167,9 +181,11 @@ ON DUPLICATE KEY UPDATE
     map_type = VALUES(map_type),
     related_location = VALUES(related_location),
     revealed = TRUE;\n" "$mtype" "$related"
-        ) | $MARIADB
-
-        _log "  ✓ map '${map_key}' loaded/updated"
+        ) | $MARIADB 2>/dev/null; then
+            _log "  ✓ map '${map_key}' loaded/updated"
+        elif [[ $QUIET -eq 0 ]]; then
+            echo "    ✗ map '${map_key}' skipped" >&2
+        fi
     done
 else
     _log "  (no maps/ dir found — skipping)"

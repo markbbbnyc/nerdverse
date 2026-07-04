@@ -1,5 +1,6 @@
 -- 002_fresh_game.sql
--- Starting save point: "Brindleford Forge" restart packet.
+-- Author Life-2 checkpoint: "Brindleford Forge" restart packet (local dev only).
+-- Public terminal uses 003_public_terminal_fresh.sql via nerdverse_web_* session DBs.
 -- Applied ONLY on first install or an explicit --fresh reset (see apply_migrations.sh).
 -- Never run on routine play.sh / migration passes — it would overwrite a live save.
 

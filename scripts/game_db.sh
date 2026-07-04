@@ -3,27 +3,37 @@
 #
 # Naming: nerdverse{N}_{Companion}  (e.g. nerdverse2_Sera, nerdverse3_Elara)
 # Legacy nerdverse{N} databases (no suffix) are still supported.
-# Active save: saves/active_db
+# Active save: saves/active_db (overridable via NERDVERSE_ACTIVE_DB_FILE for public tabs)
+#
+# Public terminal: nerdverse_web_{hex} — created by game_db_create_web_session()
+# using 003_public_terminal_fresh.sql. Never falls back to nerdverse2 or nerdverse_public.
 
 _GAME_DB_PREFIX="${NERDVERSE_DB_PREFIX:-nerdverse}"
-_ACTIVE_DB_FILE="${NERDVERSE_ACTIVE_DB_FILE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/saves/active_db}"
+_DEFAULT_ACTIVE_DB_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/saves/active_db"
 
 game_db_active_file() {
-    echo "${_ACTIVE_DB_FILE}"
+    if [[ -n "${NERDVERSE_ACTIVE_DB_FILE:-}" ]]; then
+        echo "${NERDVERSE_ACTIVE_DB_FILE}"
+    else
+        echo "${_DEFAULT_ACTIVE_DB_FILE}"
+    fi
 }
 
 game_db_resolve_active() {
-    if [[ -f "${_ACTIVE_DB_FILE}" ]]; then
-        cat "${_ACTIVE_DB_FILE}"
+    local active_file
+    active_file=$(game_db_active_file)
+    if [[ -f "${active_file}" ]]; then
+        cat "${active_file}"
     else
         echo "${DB_NAME:-nerdverse2}"
     fi
 }
 
 game_db_set_active() {
-    local name="$1"
-    mkdir -p "$(dirname "${_ACTIVE_DB_FILE}")"
-    printf '%s\n' "$name" > "${_ACTIVE_DB_FILE}"
+    local name="$1" active_file
+    active_file=$(game_db_active_file)
+    mkdir -p "$(dirname "${active_file}")"
+    printf '%s\n' "$name" > "${active_file}"
     export DB_NAME="$name"
     db_reinit
 }
@@ -58,9 +68,15 @@ game_db_label() {
         echo "Life ${BASH_REMATCH[1]} — ${BASH_REMATCH[2]}"
     elif [[ "$db" =~ ^${_GAME_DB_PREFIX}([0-9]+)$ ]]; then
         echo "Life ${BASH_REMATCH[1]} (legacy)"
+    elif [[ "$db" =~ ^${_GAME_DB_PREFIX}_web_([0-9a-f]+)$ ]]; then
+        echo "Web · ${BASH_REMATCH[1]:0:8}"
     else
         echo "$db"
     fi
+}
+
+game_db_is_web_session() {
+    [[ "${1:-${DB_NAME:-}}" =~ ^${_GAME_DB_PREFIX}_web_[0-9a-f]+$ ]]
 }
 
 # Web/public session DB: nerdverse_web_{hex} — isolated from local nerdverse2 saves.
@@ -86,7 +102,7 @@ game_db_create_web_session() {
 
     local apply_script
     apply_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/apply_migrations.sh"
-    NERDVERSE_FRESH_SEED=1 "$apply_script" --fresh --quiet
+    NERDVERSE_PUBLIC_FRESH_SEED=1 NERDVERSE_FRESH_SEED=1 "$apply_script" --fresh --quiet
 
     game_db_set_active "$new_name"
     echo "[web-session] Ready: ${new_name}"

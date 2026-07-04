@@ -34,6 +34,21 @@ Bootstrap is **idempotent** — safe to re-run. It creates a dedicated MariaDB a
 
 Active save: `saves/active_db` (overrides `nerdverse.env` `DB_NAME`).
 
+## Public terminal (browser players)
+
+Separate deploy lane for anonymous one-shot lives — **not** your author save.
+
+```bash
+./deploy/spin-up.sh root@YOUR_SERVER_IP
+```
+
+Each browser tab gets an isolated `nerdverse_web_*` database (seed `003_public_terminal_fresh.sql`). Full ops runbook: **`deploy/README.md`**.
+
+| Command | Purpose |
+|---------|---------|
+| `./deploy/spin-up.sh root@host` | Provision / update a public game server |
+| `./play.sh --public-terminal` | Local test of the sandboxed session path |
+
 ## Project Layout
 
 ```
@@ -45,8 +60,10 @@ scripts/
 sql/migrations/         # Schema (versioned, re-runnable)
 sql/seeds/              # Catalog (safe) + fresh game (new lives only)
 maps/                   # ASCII map sources → loaded into DB
+deploy/                 # Public terminal: spin-up, nginx, ttyd, sandbox
 saves/db/               # Local MariaDB dumps (git-ignored)
 docs/nerdverse-companion.md   # Diary, runbook, lore, roadmap
+deploy/README.md        # Public server install & security model
 ```
 
 ## Current Phase

@@ -34,22 +34,25 @@ render_main() {
     bond=$(sera_clamp_meter "${SERA_BOND:-25}" 2>/dev/null || echo "25")
 
     draw_operator_banner "main"
+    load_player 2>/dev/null || true
 
     if ui_use_compact; then
+        local comp_quote
+        comp_quote=$(party_companion_short 2>/dev/null || echo "Guide")
         echo
         draw_main_hud_compact "$bond"
         echo
         case "${LOCATION_KEY}" in
-            medicine) printf '  %sSera:%s "%s"\n' "$YELLOW" "$RESET" "Crate's still ours. So is the night — for now." ;;
-            sheriff)  printf '  %sSera:%s "%s"\n' "$YELLOW" "$RESET" "Marn needs a plan. We brought him one." ;;
-            mill)     printf '  %sSera:%s "%s"\n' "$YELLOW" "$RESET" "Wheel's turning. So are we." ;;
-            *)        printf '  %sSera:%s "%s"\n' "$YELLOW" "$RESET" "Pick the next honest move." ;;
+            medicine) printf '  %s%s:%s "%s"\n' "$YELLOW" "$comp_quote" "$RESET" "Crate's still ours. So is the night — for now." ;;
+            sheriff)  printf '  %s%s:%s "%s"\n' "$YELLOW" "$comp_quote" "$RESET" "Marn needs a plan. We brought him one." ;;
+            mill)     printf '  %s%s:%s "%s"\n' "$YELLOW" "$comp_quote" "$RESET" "Wheel's turning. So are we." ;;
+            *)        printf '  %s%s:%s "%s"\n' "$YELLOW" "$comp_quote" "$RESET" "Pick the next honest move." ;;
         esac
         echo
         printf '%s┌─ COMMAND LEDGER ─────────────────────────────────────────────────┐%s\n' "$GREEN" "$RESET"
         draw_ledger_option 1 "Travel (route matrix)" "1|F1"
         draw_ledger_option 2 "Inventory manifest" "2|F2"
-        draw_ledger_option 3 "Open channel — Sera" "3"
+        draw_ledger_option 3 "Open channel — $(party_companion_short 2>/dev/null || echo Guide)" "3"
         draw_ledger_option 4 "$(travel_local_action_label)" "4|F4"
         draw_ledger_option 7 "World map" "7|F7"
         draw_ledger_option 8 "Local grid" "8|F8"
@@ -67,7 +70,7 @@ render_main() {
     center_line "${BOLD}TACTICAL PERSONA OPS${RESET}  ${DIM}│ inventory became story │${RESET}" "$cols"
     echo
 
-    draw_screen_header "${ICON_CHAR}OPERATOR: MEYIU — THE SINNER WHO STILL CHOOSES"
+    draw_screen_header "${ICON_CHAR}OPERATOR: $(party_player_header 2>/dev/null || echo 'PILGRIM — WALKER ON THE OPEN ROAD')"
 
     draw_location_panel
     draw_world_clock_line
@@ -89,11 +92,11 @@ render_main() {
     printf '%s┌─ COMMAND LEDGER ── SELECT FUNCTION ─────────────────────────────────┐%s\n' "$GREEN" "$RESET"
     draw_ledger_option 1 "Walk to another place (route matrix)" "1|F1"
     draw_ledger_option 2 "Inventory manifest — equipped + carried" "2|F2"
-    draw_ledger_option 3 "Open channel — Sera Thornwake" "3"
+    draw_ledger_option 3 "Open channel — $(party_companion_short 2>/dev/null || echo Guide)" "3"
     draw_ledger_option 4 "$(travel_local_action_label)" "4|F4"
     draw_ledger_option 7 "Unfold world map (known lands)" "7|F7"
     draw_ledger_option 8 "Local terrain study (this grid)" "8|F8"
-    draw_ledger_option 9 "Persona records — Meyiu / Sera" "9|F9"
+    draw_ledger_option 9 "Persona records — party" "9|F9"
     draw_ledger_option 0 "Sign off — preserve save + LLM handoff" "0|F12"
     printf '%s└──────────────────────────────────────────────────────────────────┘%s\n' "$GREEN" "$RESET"
     draw_footer
@@ -125,6 +128,9 @@ render_travel() {
     echo
     draw_ledger_option 0 "Remain at current grid coordinates" "0|F3"
     draw_footer
+    echo
+    printf '  %s>%s Route # or 0 / F3 to return: ' "$BRIGHT_GREEN" "$RESET"
+    RENDER_PROMPT_SHOWN=1
 }
 
 render_world_map() {
@@ -136,6 +142,9 @@ render_world_map() {
     echo
     printf '%s(intel logged to persona memory)%s\n' "$DIM" "$RESET"
     draw_footer
+    echo
+    printf '  %s>%s Press 0 / F3 to return: ' "$BRIGHT_GREEN" "$RESET"
+    RENDER_PROMPT_SHOWN=1
 }
 
 render_local_map() {
@@ -145,6 +154,9 @@ render_local_map() {
     draw_screen_header "${ICON_MAP}CARTOGRAPHY — LOCAL GRID: ${LOCATION:-}"
     show_local_map
     draw_footer
+    echo
+    printf '  %s>%s Press 0 / F3 to return: ' "$BRIGHT_GREEN" "$RESET"
+    RENDER_PROMPT_SHOWN=1
 }
 
 render_character_sheets() {
@@ -154,17 +166,23 @@ render_character_sheets() {
     draw_screen_header "${ICON_SCROLL}PERSONA RECORDS — CLASSIFIED PILGRIM"
     show_character_sheets
     draw_footer
+    echo
+    printf '  %s>%s Press 0 / F3 to return: ' "$BRIGHT_GREEN" "$RESET"
+    RENDER_PROMPT_SHOWN=1
 }
 
 render_inventory() {
     clear_screen
     draw_operator_banner "inventory"
     echo
-    draw_screen_header "${ICON_CHAR}INVENTORY MANIFEST — MEYIU"
+    draw_screen_header "${ICON_CHAR}INVENTORY MANIFEST — $(party_player_name 2>/dev/null || echo PILGRIM)"
     echo
     printf '%s%s%s\n' "$DIM" "LINE ITEMS (equipped first, slot-aware):" "$RESET"
     echo "SELECT CONCAT('  ', COALESCE(CONCAT('[', slot, '] '), ''), item_name, ' (x', quantity, ')') FROM inventory WHERE character_id = (SELECT id FROM characters WHERE is_player=TRUE) ORDER BY equipped DESC, slot, item_name;" | $MARIADB
     echo
     printf '%s%s%s\n' "$GRAY" "Arsenal discipline applies. Every item is a promise." "$RESET"
     draw_footer
+    echo
+    printf '  %s>%s Press 0 / F3 to return: ' "$BRIGHT_GREEN" "$RESET"
+    RENDER_PROMPT_SHOWN=1
 }

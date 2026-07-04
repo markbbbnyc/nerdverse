@@ -15,7 +15,7 @@ PUBLIC_TERMINAL=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --new-game) NEW_GAME=1; shift ;;
-        --public-terminal) PUBLIC_TERMINAL=1; export NERDVERSE_PUBLIC_TERMINAL=1; shift ;;
+        --public-terminal) PUBLIC_TERMINAL=1; export NERDVERSE_PUBLIC_TERMINAL=1; shift ;;  # sandboxed web lane
         --companion|--companion=*)
             if [[ "$1" == --companion=* ]]; then
                 COMPANION_NAME="${1#*=}"; shift
@@ -64,9 +64,23 @@ source "${LIB_DIR}/sheets.sh"
 source "${LIB_DIR}/render.sh"
 source "${LIB_DIR}/handoff.sh"
 source "${LIB_DIR}/character_create.sh"
+source "${LIB_DIR}/party.sh"
+source "${LIB_DIR}/telemetry.sh"
 
 DB_NAME=$(game_db_resolve_active)
 db_reinit
+
+# Public terminal: hard gate — never load author/shared DBs (nerdverse2, nerdverse_public).
+if [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]]; then
+    if [[ -z "${NERDVERSE_ACTIVE_DB_FILE:-}" || ! -f "${NERDVERSE_ACTIVE_DB_FILE}" ]]; then
+        echo "ERROR: Public session missing isolated active_db pointer." >&2
+        exit 1
+    fi
+    if ! game_db_is_web_session "${DB_NAME}"; then
+        echo "ERROR: Public sessions must use isolated nerdverse_web_* databases (got: ${DB_NAME})." >&2
+        exit 1
+    fi
+fi
 
 if [[ $NEW_GAME -eq 1 ]]; then
     command -v mariadb >/dev/null 2>&1 || { echo "Run ./bootstrap.sh first."; exit 1; }
@@ -85,8 +99,17 @@ prog_normalize_saves
 SCREEN_STACK=("main")
 
 # Breakthrough ceremonies if road XP threshold crossed (play-shaped unlocks)
-if [[ -t 0 ]]; then
+if [[ -t 0 && "${NERDVERSE_PUBLIC_TERMINAL:-}" != "1" ]]; then
     prog_maybe_breakthrough_ceremonies
+fi
+
+# Drain stray bytes from browser terminal handshake before first menu read
+if [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]]; then
+    sleep 0.15
+    tty=$(game_input_tty)
+    if [[ "$tty" != "/dev/stdin" ]] && [[ -e "$tty" ]] && [[ -r "$tty" ]]; then
+        while read -r -t 0.01 _junk <"$tty" 2>/dev/null; do :; done
+    fi
 fi
 
 handle_local_action() {
@@ -133,14 +156,18 @@ while true; do
 
     if [[ "${RENDER_PROMPT_SHOWN:-0}" == "1" ]]; then
         RENDER_PROMPT_SHOWN=0
-        read -r choice
+        choice=$(read_game_choice 1)
     else
-        read -r -p "> " choice
+        choice=$(read_game_choice 0)
     fi
     choice=$(normalize_choice "$choice")
+    tel_event "menu_choice" "$_screen" "$choice" "${LOCATION_KEY:-}"
 
     case "$_screen" in
         main)
+            if [[ "${NERDVERSE_PUBLIC_TERMINAL:-}" == "1" ]] && ! is_valid_main_choice "$choice"; then
+                continue
+            fi
             case "$choice" in
                 f5)
                     continue
@@ -159,7 +186,7 @@ while true; do
                     clear_screen
                     draw_operator_banner "main"
                     echo
-                    draw_screen_header "${ICON_CHAR}COMPANION CHANNEL — SERA THORNWAKE [LIVE]"
+                    draw_screen_header "${ICON_CHAR}COMPANION CHANNEL — $(party_companion_name 2>/dev/null || echo GUIDE) [LIVE]"
                     draw_sera_operator_glyph "$(sera_clamp_meter "${SERA_BOND:-25}")"
                     echo
                     printf '%s┌─ OPEN CHANNEL — AUTONOMOUS PLAYER SESSION ──────────────────────┐%s\n' "$CYAN" "$RESET"
@@ -171,7 +198,7 @@ while true; do
                     sera_exercise_agency "talk"
                     echo
                     draw_pf_key_strip "main"
-                    read -r -p "Press enter to return to command ledger..."
+                    read_game_confirm "Press enter to return to command ledger..."
                     ;;
                 4|act|do|local)
                     handle_local_action
@@ -197,6 +224,7 @@ while true; do
                         printf '%s║  Close this window to end. No shell access.                    ║%s\n' "$GREEN" "$RESET"
                         printf '%s╚════════════════════════════════════════════════════════════════╝%s\n' "$GREEN" "$RESET"
                         echo "Life: ${DB_NAME} ($(game_db_label "$DB_NAME"))."
+                        tel_event "session_end" "main" "0" "db=${DB_NAME}"
                         exit 0
                     fi
                     handoff_path=$(handoff_write)
@@ -208,7 +236,7 @@ while true; do
                 *)
                     SERA_TURN_HAD_GAIN=0
                     echo "Unknown option. Use ledger number or PF-key (F1 Travel, F4 Act, F12 Signoff)."
-                    read -r -p "Press enter..."
+                    read_game_confirm "Press enter..."
                     ;;
             esac
             apply_sera_decay
@@ -222,20 +250,22 @@ while true; do
                     dest=$(travel_resolve_choice "$choice")
                     if [[ -n "$dest" ]]; then
                         travel_to "$dest" || true
-                        read -r -p "Press enter..."
+                        read_game_confirm "Press enter..."
+                        pop_screen
                     else
-                        echo "Pick a path number, or 0 to stay."
-                        read -r -p "Press enter..."
+                        echo "Pick a path number, or 0 / F3 to return."
                     fi
-                    pop_screen
                     ;;
             esac
             ;;
         world_map|local_map|character_sheets|inventory)
-            if [[ "$choice" == "f5" ]]; then
-                continue
-            fi
-            pop_screen
+            case "$choice" in
+                f5) continue ;;
+                0|f3|back|b) pop_screen ;;
+                *)
+                    echo "Press 0 or F3 to return to command ledger."
+                    ;;
+            esac
             ;;
         *)
             pop_screen

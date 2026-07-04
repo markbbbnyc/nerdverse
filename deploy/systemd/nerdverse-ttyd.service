@@ -14,7 +14,7 @@ ExecStart=/usr/local/bin/ttyd \
     -p 7681 \
     -i 127.0.0.1 \
     -b /play \
-    -O \
+    -W \
     -t disableReconnect=true \
     -t enableZmodem=false \
     -t enableTrzsz=false \
