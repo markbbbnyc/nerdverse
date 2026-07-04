@@ -89,6 +89,8 @@
     }
     async function load() {
       const status = document.getElementById('status');
+      const btn = document.getElementById('refresh');
+      btn.disabled = true;
       try {
         const r = await fetch('/admin/stats.json?t=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' });
         if (!r.ok) throw new Error(r.status);
@@ -97,7 +99,7 @@
         document.getElementById('gen').textContent = 'Generated ' + (s.generated_at || '?');
 
         const kpis = document.getElementById('kpis');
-        kpis.append(
+        kpis.replaceChildren(
           kpi(s.unique_sessions ?? 0, 'UNIQUE SESSIONS'),
           kpi(s.session_starts ?? 0, 'SESSION STARTS'),
           kpi(s.wizard_completions ?? 0, 'LIVES REGISTERED'),
@@ -107,17 +109,20 @@
         );
 
         const ct = document.querySelector('#choices tbody');
-        (s.top_choices || []).forEach(c => ct.appendChild(row(c.key, c.count)));
+        ct.replaceChildren(...(s.top_choices || []).map(c => row(c.key, c.count)));
 
         const pt = document.querySelector('#players tbody');
-        (s.top_player_names || []).forEach(p => pt.appendChild(row(p.key, p.count)));
+        pt.replaceChildren(...(s.top_player_names || []).map(p => row(p.key, p.count)));
 
         const rec = document.getElementById('recent');
-        rec.innerHTML = (s.recent_events || []).map(e =>
+        const lines = (s.recent_events || []).map(e =>
           `${e.ts} · ${e.type} · ${e.screen || '-'} · ${e.choice || '-'} · ${e.player || ''} ${e.detail || ''}`
-        ).join('<br>') || '(no events yet)';
+        );
+        rec.innerHTML = lines.length ? lines.join('<br>') : '(no events yet)';
       } catch (e) {
         status.innerHTML = '<span class="err">Could not load stats.json — ' + e.message + '</span>';
+      } finally {
+        btn.disabled = false;
       }
     }
     document.getElementById('refresh').addEventListener('click', load);
